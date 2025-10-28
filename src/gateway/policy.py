@@ -1,14 +1,34 @@
 from pathlib import Path
 import yaml, json, re
+import os
 
 class Policy:
     def __init__(self, path='configs/policy.yaml'):
+        # Determine project root (where configs/ dir exists)
+        if Path(path).exists():
+            self.project_root = Path.cwd()
+        else:
+            # Try to find project root by looking for configs dir
+            cwd = Path.cwd()
+            while cwd != cwd.parent:
+                if (cwd / 'configs' / 'policy.yaml').exists():
+                    self.project_root = cwd
+                    path = cwd / path
+                    break
+                cwd = cwd.parent
+            else:
+                self.project_root = Path.cwd()
+
         self.cfg = yaml.safe_load(Path(path).read_text(encoding='utf-8'))
 
     def within_roots(self, p: Path, roots:list[str]) -> bool:
         pr = p.resolve()
         for r in roots:
-            rp = Path(r).resolve()
+            # Resolve root relative to project root
+            if Path(r).is_absolute():
+                rp = Path(r).resolve()
+            else:
+                rp = (self.project_root / r).resolve()
             try:
                 pr.relative_to(rp)
                 return True
