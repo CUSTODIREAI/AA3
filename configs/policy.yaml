@@ -1,0 +1,86 @@
+constraints:
+  min_free_gb: 50
+  daily_download_budget_gb: 100
+  # Writable roots on host (agents may create/modify/delete inside these):
+  write_roots:
+    - "workspace"
+    - "cache"
+    - "staging"
+    - "/var/tmp/custodire"
+  # Protected roots (mounted read‑only inside containers; gateway blocks writes/deletes here):
+  protected_ro_roots:
+    - "dataset"
+    - "evidence"
+    - "staging-final"
+  recycle_root: "recycle"
+  block_delete_outside_workspace: true
+
+actions:
+  # File ops (no delete exposed)
+  - type: fs.write
+    params: [path, content]
+  - type: fs.append
+    params: [path, content]
+  - type: fs.move
+    params: [src, dst]
+
+  # Git clone into workspace
+  - type: git.clone
+    params: [repo, dst]
+
+  # Downloads
+  - type: download.ytdlp
+    params: [url, out_dir]
+    rate_profiles: [youtube_safe, instagram_safe, tiktok_safe]
+
+  # Container sandbox (PunkBox)
+  - type: container.run
+    image_allowlist: ["custodire/dev:*", "custodire/ig-safe:*", "ghcr.io/custodire/*"]
+    flags_deny: ["--privileged","--pid=host","--net=host","--cap-add=SYS_ADMIN"]
+    mount_allowlist:
+      - prefix: dataset
+        mode: ro
+      - prefix: evidence
+        mode: ro
+      - prefix: staging-final
+        mode: ro
+      - prefix: workspace
+        mode: rw
+      - prefix: cache
+        mode: rw
+      - prefix: staging
+        mode: rw
+      - prefix: /var/tmp/custodire
+        mode: rw
+    resources:
+      max_mem_mb: 16384
+      max_cpus: 8
+    runtime_allowlist: ["runsc","runc"]
+
+  # Execute commands inside dev container (allowlisted binaries only)
+  - type: exec.container_cmd
+    image_allowlist: ["custodire/dev:*"]
+    cmd_allowlist:
+      - ["python", "*"]
+      - ["pip", "*"]
+      - ["pytest", "*"]
+      - ["node", "*"]
+      - ["npm", "*"]
+      - ["npx", "*"]
+      - ["tsc", "*"]
+      - ["gcc", "*"]
+      - ["g++", "*"]
+      - ["make", "*"]
+      - ["cmake", "*"]
+      - ["bash", "*"]
+      - ["ffmpeg", "*"]
+      - ["yt-dlp", "*"]
+      - ["git", "*"]
+
+  # Append‑only dataset promotion
+  - type: ingest.promote
+    params: [items]   # list of {"src","relative_dst"?, "tags"?:{}}
+
+  # Stop our own jobs
+  - type: job.stop
+    job_id_regex: "^custodire-[a-z0-9-]+$"

@@ -1,0 +1,8 @@
+[Unit]
+Description=Custodire AA (one cycle)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/custodire-aa-system
+ExecStart=/bin/bash -lc "python -c 'from src.orchestrator.cycle import run_cycle; run_cycle()'"

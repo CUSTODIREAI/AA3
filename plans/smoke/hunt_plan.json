@@ -1,0 +1,21 @@
+{
+  "plan_id": "smoke-001",
+  "actions": [
+    {
+      "id": "W1",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/new/clip_0001.txt",
+        "content": "hello, custodire dataset!"
+      }
+    },
+    {
+      "id": "P1",
+      "type": "ingest.promote",
+      "items": [
+        {"src": "staging/new/clip_0001.txt", "relative_dst": "session42/clip_0001.txt",
+         "tags": {"lang": "en", "archetype": "UGC_9x16_1080"}}
+      ]
+    }
+  ]
+}

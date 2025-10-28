@@ -1,0 +1,4 @@
+daily_download_budget_gb: 100
+max_concurrent_downloads: 2
+sleep_between_downloads_s: 10
+min_disk_free_gb: 50
