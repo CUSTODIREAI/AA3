@@ -1,0 +1,1 @@
+{"ts": "2025-10-28T17:47:14Z", "src": "/mnt/x/data_from_helper/custodire-aa-system/staging/new/clip_0001.txt", "dst": "dataset/2025/10/28/session42/clip_0001.txt", "sha256": "b183f20f48ce1584885ad39f433acda0835e8704c76238ac96273e30326c1474", "bytes": 25, "actor": "executor", "plan_id": "smoke-001", "tags": {"lang": "en", "archetype": "UGC_9x16_1080"}}

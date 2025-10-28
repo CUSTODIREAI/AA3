@@ -1,0 +1,19 @@
+{"ts": "2025-10-28T17:43:22Z", "kind": "scorecard_generated", "report": "reports/diversity_report.json"}
+{"ts": "2025-10-28T17:43:22Z", "kind": "plan_missing"}
+{"ts": "2025-10-28T17:44:08Z", "kind": "scorecard_generated", "report": "reports/diversity_report.json"}
+{"ts": "2025-10-28T17:44:08Z", "kind": "plan_ready", "hunt": "plans/hunt_plan.json", "reviewed": "plans/reviewed_plan.json"}
+{"ts": "2025-10-28T17:45:36Z", "kind": "scorecard_generated", "report": "reports/diversity_report.json"}
+{"ts": "2025-10-28T17:45:36Z", "kind": "plan_ready", "hunt": "plans/hunt_plan.json", "reviewed": "plans/reviewed_plan.json"}
+{"ts": "2025-10-28T17:45:36Z", "kind": "action_result", "action_id": "W1", "type": "fs.write", "ok": true, "path": "staging/new/clip_0001.txt"}
+{"ts": "2025-10-28T17:45:36Z", "kind": "action_result", "action_id": "P1", "type": "ingest.promote", "ok": false, "results": [{"src": "/mnt/x/data_from_helper/custodire-aa-system/staging/new/clip_0001.txt", "ok": false, "error": "src not under writable roots"}]}
+{"ts": "2025-10-28T17:45:36Z", "kind": "plan_execution_failed", "plan_id": "smoke-001", "action_id": "P1"}
+{"ts": "2025-10-28T17:46:33Z", "kind": "scorecard_generated", "report": "reports/diversity_report.json"}
+{"ts": "2025-10-28T17:46:33Z", "kind": "plan_ready", "hunt": "plans/hunt_plan.json", "reviewed": "plans/reviewed_plan.json"}
+{"ts": "2025-10-28T17:46:33Z", "kind": "action_result", "action_id": "W1", "type": "fs.write", "ok": true, "path": "staging/new/clip_0001.txt"}
+{"ts": "2025-10-28T17:46:33Z", "kind": "action_result", "action_id": "P1", "type": "ingest.promote", "ok": false, "results": [{"src": "/mnt/x/data_from_helper/custodire-aa-system/staging/new/clip_0001.txt", "ok": false, "error": "src not under writable roots"}]}
+{"ts": "2025-10-28T17:46:33Z", "kind": "plan_execution_failed", "plan_id": "smoke-001", "action_id": "P1"}
+{"ts": "2025-10-28T17:47:14Z", "kind": "scorecard_generated", "report": "reports/diversity_report.json"}
+{"ts": "2025-10-28T17:47:14Z", "kind": "plan_ready", "hunt": "plans/hunt_plan.json", "reviewed": "plans/reviewed_plan.json"}
+{"ts": "2025-10-28T17:47:14Z", "kind": "action_result", "action_id": "W1", "type": "fs.write", "ok": true, "path": "staging/new/clip_0001.txt"}
+{"ts": "2025-10-28T17:47:14Z", "kind": "action_result", "action_id": "P1", "type": "ingest.promote", "ok": true, "results": [{"src": "/mnt/x/data_from_helper/custodire-aa-system/staging/new/clip_0001.txt", "dst": "dataset/2025/10/28/session42/clip_0001.txt", "ok": true, "sha256": "b183f20f48ce1584885ad39f433acda0835e8704c76238ac96273e30326c1474"}]}
+{"ts": "2025-10-28T17:47:14Z", "kind": "plan_execution_complete", "plan_id": "smoke-001"}

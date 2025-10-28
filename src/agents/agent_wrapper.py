@@ -1,232 +1,262 @@
-"""Agent wrapper for Claude Code and Codex CLI"""
+"""Agent wrapper for Claude Code and Codex CLI
+
+Implements call_proposer and call_critic for multi-agent deliberation.
+"""
+from __future__ import annotations
 from pathlib import Path
-import json, time, subprocess, os
+import json, time, subprocess, re, os
 
-TRANSCRIPT = Path("reports/conversation.jsonl")
+# ---- Transcript utilities ----
+def _ts():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
-
-def log_conversation(turn: int, agent: str, phase: str, content: str):
-    """Log conversation turn to transcript"""
-    rec = {
-        "ts": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-        "turn": turn,
-        "agent": agent,
-        "phase": phase,
-        "content": content
-    }
-    TRANSCRIPT.parent.mkdir(parents=True, exist_ok=True)
-    with open(TRANSCRIPT, "a", encoding="utf-8") as f:
+def append_transcript(path: str|Path, rec: dict):
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
+# ---- File helpers ----
+def read_text(path: str|Path) -> str:
+    return Path(path).read_text(encoding="utf-8")
 
-def format_history(history: list[dict]) -> str:
-    """Format conversation history for agent context"""
-    lines = []
-    for h in history:
-        lines.append(f"[Turn {h['turn']}] {h['agent']} ({h['phase']}): {h['content'][:200]}...")
-    return "\n".join(lines)
+def save_json(path: str|Path, obj: dict):
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def call_proposer(task_brief: str, history: list[dict], system_prompt: str, turn: int) -> dict:
+# ---- JSON extraction from Codex output ----
+def extract_json_from_codex_output(output: str) -> dict:
     """
-    Call Claude Code (Proposer) via its CLI or API.
+    Extract valid JSON from Codex CLI output.
 
-    For now, using Codex as a stand-in for Claude Code since we're in Claude Code already.
-    In production, this would call claude-code CLI or Anthropic API.
+    Codex outputs include metadata, thinking blocks, and the actual JSON response.
+    We need to find the largest valid JSON object in the output.
     """
-    # Build prompt with context
-    history_text = format_history(history) if history else "No prior conversation."
+    # Strategy: find all potential JSON blocks and validate them
+    lines = output.split('\n')
 
-    prompt = f"""SYSTEM:
-{system_prompt}
+    # Find all lines that start with '{'
+    potential_starts = []
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith('{') and len(stripped) > 5:  # Not just "{"
+            potential_starts.append(i)
 
-CONVERSATION HISTORY:
-{history_text}
+    # Try each potential start, looking for complete JSON
+    candidates = []
+    for start_idx in potential_starts:
+        # Try to find matching closing brace
+        brace_count = 0
+        json_lines = []
 
-TASK BRIEF:
-{task_brief}
+        for i in range(start_idx, len(lines)):
+            line = lines[i]
 
-YOUR TURN: {"Propose an initial plan" if turn == 1 else "Refine your plan based on the critic's feedback above"}.
-Output JSON only."""
+            # Stop at metadata lines
+            if 'tokens used' in line.lower() or line.startswith('[2025-'):
+                break
 
-    # For demonstration: use codex to simulate proposer
-    # In real implementation, call Claude Code API or CLI here
-    result = _call_codex_exec(prompt)
+            json_lines.append(line)
 
-    # Log to transcript
-    log_conversation(turn, "claude-code", "propose" if turn == 1 else "refine", result)
+            # Count braces to find complete JSON
+            brace_count += line.count('{') - line.count('}')
 
-    try:
-        plan = json.loads(result)
-        return {"success": True, "plan": plan, "raw": result}
-    except json.JSONDecodeError as e:
-        return {"success": False, "error": f"Invalid JSON: {e}", "raw": result}
+            if brace_count == 0 and len(json_lines) > 1:
+                # Potentially complete JSON
+                json_text = '\n'.join(json_lines)
+                try:
+                    parsed = json.loads(json_text)
+                    candidates.append((len(json_text), parsed, json_text))
+                    break  # Found valid JSON from this start point
+                except json.JSONDecodeError:
+                    continue
 
+    # Return the largest valid JSON (most likely to be the actual response)
+    if candidates:
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        return candidates[0][1]  # Return parsed dict
 
-def call_critic(proposal: dict, history: list[dict], system_prompt: str, turn: int, task_brief: str) -> dict:
-    """Call Codex (Critic) via its CLI"""
+    # Fallback: try to find JSON by looking for specific patterns
+    # Look for plan_id or reasoning fields
+    json_pattern = r'\{[^{}]*"plan_id"[^{}]*\}'
+    matches = re.finditer(json_pattern, output, re.DOTALL)
+    for match in matches:
+        try:
+            # Try to expand to full JSON
+            start = match.start()
+            end = output.find('\n[2025-', start)  # Stop at timestamp
+            if end == -1:
+                end = output.find('\ntokens used', start)
+            if end == -1:
+                end = len(output)
 
-    history_text = format_history(history) if history else "No prior conversation."
+            json_text = output[start:end].strip()
+            return json.loads(json_text)
+        except:
+            continue
 
-    prompt = f"""SYSTEM:
-{system_prompt}
-
-CONVERSATION HISTORY:
-{history_text}
-
-TASK BRIEF:
-{task_brief}
-
-PROPOSED PLAN:
-{json.dumps(proposal, indent=2)}
-
-YOUR TURN: Review this plan. Output JSON only with your approval decision."""
-
-    result = _call_codex_exec(prompt)
-
-    # Log to transcript
-    log_conversation(turn, "codex", "critique" if turn == 2 else "review", result)
-
-    try:
-        review = json.loads(result)
-        return {"success": True, "review": review, "raw": result}
-    except json.JSONDecodeError as e:
-        return {"success": False, "error": f"Invalid JSON: {e}", "raw": result}
+    raise ValueError(f"Could not extract valid JSON from Codex output. Output:\n{output[:500]}...")
 
 
-def _call_codex_exec(prompt: str) -> str:
-    """Execute Codex CLI command (helper function)"""
-    # Escape quotes in prompt
-    safe_prompt = prompt.replace('"', '\\"').replace("'", "\\'")
+# ---- Codex CLI invocation ----
+def call_codex_cli(prompt: str, timeout: int = 180) -> str:
+    """Call Codex CLI and return raw output"""
 
-    # Determine if we're in WSL or Windows
-    if os.path.exists('/proc/version'):
-        # We're in WSL
-        cmd = f'codex exec --skip-git-repo-check "{safe_prompt}"'
+    # Check if we're in WSL or Windows
+    in_wsl = os.path.exists('/proc/version')
+
+    if in_wsl:
+        # Direct codex call in WSL
+        cmd = ['codex', 'exec', '--skip-git-repo-check', prompt]
         proc = subprocess.run(
-            ['bash', '-c', cmd],
+            cmd,
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=timeout
         )
     else:
-        # We're in Windows - call via WSL
-        # Escape for WSL bash
-        wsl_safe_prompt = safe_prompt.replace('$', '\\$')
-        cmd = f'wsl bash -c "codex exec --skip-git-repo-check \\"{wsl_safe_prompt}\\""'
+        # Call via WSL from Windows
+        # Use a file to pass the prompt to avoid quoting issues
+        prompt_file = Path('temp_prompt.txt')
+        prompt_file.write_text(prompt, encoding='utf-8')
+
+        cmd = f'wsl bash -c "cd /mnt/x/data_from_helper/custodire-aa-system && codex exec --skip-git-repo-check \\"$(cat temp_prompt.txt)\\""'
         proc = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             shell=True,
-            timeout=120
+            timeout=timeout
         )
 
+        # Cleanup
+        if prompt_file.exists():
+            prompt_file.unlink()
+
     if proc.returncode != 0:
-        raise RuntimeError(f"Codex exec failed: {proc.stderr}")
+        raise RuntimeError(f"Codex CLI failed:\nSTDERR: {proc.stderr}\nSTDOUT: {proc.stdout}")
 
-    # Extract just the agent's response (strip Codex CLI metadata)
-    output = proc.stdout.strip()
-
-    # Find the actual response (usually after "codex" line and metadata)
-    lines = output.split('\n')
-
-    # Look for the LAST occurrence of JSON (not the example in the prompt)
-    # Strategy: find all { lines, take the last one that's near the end
-    json_candidates = []
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith('{') and not stripped.startswith('{...'):
-            json_candidates.append(i)
-
-    # Take the last JSON block (should be the actual response, not prompt example)
-    if json_candidates:
-        json_start = json_candidates[-1]
-
-        # Extract from that line to the end, but stop at "tokens used" or similar metadata
-        json_lines = []
-        for line in lines[json_start:]:
-            if 'tokens used' in line.lower() or line.startswith('[2025-'):
-                break
-            json_lines.append(line)
-
-        result = '\n'.join(json_lines).strip()
-        # Verify it's valid JSON structure
-        if result.startswith('{') and result.endswith('}'):
-            return result
-
-    # Fallback: return everything after the last "codex" marker
-    for i in range(len(lines) - 1, -1, -1):
-        line = lines[i]
-        if 'codex' in line.lower() and '[2025-' not in line:
-            return '\n'.join(lines[i+1:]).strip()
-
-    return output
+    return proc.stdout
 
 
-def call_claude_code_proposer(task_brief: str, history: list[dict], system_prompt: str, turn: int) -> dict:
+# ---- Agent implementations ----
+def call_proposer(task_brief: str, history: list[dict]) -> dict:
     """
-    Actual Claude Code proposer - uses Python to construct plan internally
-    since we ARE Claude Code in this session.
+    Proposer agent: Creates initial plan or refines based on critic feedback.
 
-    This is a special case: Claude Code calling itself for deliberation.
+    For this implementation, we use Codex to simulate the proposer.
+    In production, this would call Claude Code API/CLI.
     """
-    history_text = format_history(history) if history else "No prior conversation."
-
-    # Since we're Claude Code, we can directly reason about the task
-    # In a production system, this would call claude-code CLI or API
-
-    if turn == 1:
-        # Initial proposal - analyze task brief and create plan
-        plan = _construct_plan_from_task(task_brief)
-        reasoning = f"Analyzed task brief and created plan with {len(plan.get('actions', []))} actions"
+    # Build prompt based on history
+    if not history or all(h.get('phase') != 'propose' for h in history):
+        phase = "initial proposal"
+        history_text = "This is your first turn."
     else:
-        # Refinement - incorporate critic feedback
-        last_critique = history[-1]['content'] if history else ""
-        plan = _refine_plan_from_feedback(task_brief, last_critique)
-        reasoning = "Refined plan based on critic feedback"
+        phase = "refinement"
+        # Get last critique
+        last_review = next((h for h in reversed(history) if h.get('phase') == 'critique'), None)
+        if last_review:
+            review_data = last_review.get('review', {})
+            history_text = f"Previous critique:\nApproved: {review_data.get('approved')}\nReasons: {review_data.get('reasons')}\nRequired changes: {review_data.get('required_changes', [])}"
+        else:
+            history_text = "No critique found in history."
 
-    result_text = json.dumps(plan, indent=2)
-    log_conversation(turn, "claude-code", "propose" if turn == 1 else "refine", reasoning + "\n" + result_text)
+    prompt = f"""You are a Proposer agent creating a plan for dataset curation.
 
-    return {"success": True, "plan": plan, "raw": result_text}
+TASK:
+{task_brief}
+
+HISTORY:
+{history_text}
+
+PHASE: {phase}
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON (no markdown, no explanations) with this structure:
+{{
+  "plan_id": "unique-id-string",
+  "reasoning": "Brief explanation of approach",
+  "actions": [
+    {{"id": "A1", "type": "fs.write", "params": {{"path": "...", "content": "..."}}}},
+    {{"id": "A2", "type": "ingest.promote", "items": [{{"src": "...", "relative_dst": "...", "tags": {{...}}}}]}}
+  ]
+}}
+
+Available tools: fs.write, fs.append, fs.move, git.clone, download.ytdlp, container.run, exec.container_cmd, ingest.promote
+
+Rules:
+- Files must be created in staging/ or workspace/ first
+- Use ingest.promote to move to dataset/ (append-only)
+- Include tags in promotion items
+- plan_id must be unique
+
+Output JSON now:"""
+
+    # Call Codex
+    output = call_codex_cli(prompt)
+
+    # Extract JSON
+    plan = extract_json_from_codex_output(output)
+
+    # Validate basic structure
+    if 'actions' not in plan:
+        raise ValueError(f"Invalid plan structure: missing 'actions' field. Plan: {plan}")
+
+    return plan
 
 
-def _construct_plan_from_task(task_brief: str) -> dict:
-    """Helper: construct initial plan from task brief (Claude Code's internal reasoning)"""
-    # This is a placeholder - in real usage, parse the task brief
-    # For now, return a template that the critic will review
-    return {
-        "plan_id": f"plan-{int(time.time())}",
-        "reasoning": "Initial plan based on task brief analysis",
-        "actions": [
-            {
-                "id": "A1",
-                "type": "fs.write",
-                "params": {
-                    "path": "staging/placeholder.txt",
-                    "content": "Placeholder - will be replaced with actual task actions"
-                }
-            }
-        ]
-    }
+def call_critic(proposal: dict, history: list[dict]) -> dict:
+    """
+    Critic agent: Reviews proposal and approves or requests changes.
 
+    Uses Codex CLI.
+    """
+    history_summary = f"This is critique turn {len([h for h in history if h.get('phase') == 'critique']) + 1}"
 
-def _refine_plan_from_feedback(task_brief: str, critique: str) -> dict:
-    """Helper: refine plan based on critic feedback"""
-    # Parse critique and update plan
-    # For now, return updated template
-    return {
-        "plan_id": f"plan-refined-{int(time.time())}",
-        "reasoning": f"Refined based on feedback: {critique[:100]}...",
-        "actions": [
-            {
-                "id": "A1",
-                "type": "fs.write",
-                "params": {
-                    "path": "staging/refined.txt",
-                    "content": "Refined plan incorporating critic feedback"
-                }
-            }
-        ]
-    }
+    prompt = f"""You are a Critic agent reviewing a dataset curation plan.
+
+PROPOSAL:
+{json.dumps(proposal, indent=2)}
+
+HISTORY:
+{history_summary}
+
+YOUR TASK:
+Review the proposal against these criteria:
+1. Files are created in staging/ or workspace/ (writable roots)
+2. Plan ends with ingest.promote action
+3. Promotion items include tags
+4. No privileged docker flags
+5. Actions are valid and will work
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON (no markdown, no explanations):
+{{
+  "approved": true/false,
+  "reasons": ["reason 1", "reason 2", ...],
+  "required_changes": ["change 1", ...],  // only if not approved
+  "plan": {{...}}  // final plan (same as proposal if approved, or edited version)
+}}
+
+If approved=true, plan will execute immediately.
+If approved=false, proposer will refine.
+
+Output JSON now:"""
+
+    # Call Codex
+    output = call_codex_cli(prompt)
+
+    # Extract JSON
+    review = extract_json_from_codex_output(output)
+
+    # Validate structure
+    if 'approved' not in review:
+        raise ValueError(f"Invalid review structure: missing 'approved' field. Review: {review}")
+
+    # Ensure plan is included
+    if 'plan' not in review:
+        review['plan'] = proposal  # Use original if not provided
+
+    return review
