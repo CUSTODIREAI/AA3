@@ -37,10 +37,12 @@ class Policy:
         return False
 
     def is_protected(self, p: Path) -> bool:
-        return self.within_roots(p, self.cfg.get('protected_ro_roots', []))
+        roots = self.cfg.get('constraints', {}).get('protected_ro_roots', [])
+        return self.within_roots(p, roots)
 
     def is_writable(self, p: Path) -> bool:
-        return self.within_roots(p, self.cfg.get('write_roots', []))
+        roots = self.cfg.get('constraints', {}).get('write_roots', [])
+        return self.within_roots(p, roots)
 
     def allow_action_type(self, t: str) -> bool:
         return any(a.get('type') == t for a in self.cfg.get('actions', []))
