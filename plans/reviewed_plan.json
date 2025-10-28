@@ -1,23 +1,71 @@
 {
   "approved": true,
-  "reasons": ["Smoke test: write into staging, then append-only promote into dataset."],
+  "reasons": [
+    "Meets all criteria",
+    "Files in staging/",
+    "Plan ends with ingest.promote",
+    "Tags present for each promotion item",
+    "No privileged or docker actions observed"
+  ],
   "plan": {
-    "plan_id": "smoke-001",
+    "plan_id": "c3f5999f-8d79-4f42-b6ab-79bda1cfa3b5",
+    "reasoning": "Create three tiny test files in staging/test and promote them via append-only ingest.promote with required tags and date-partitioned destinations.",
     "actions": [
       {
-        "id": "W1",
+        "id": "A1",
         "type": "fs.write",
         "params": {
-          "path": "staging/new/clip_0001.txt",
-          "content": "hello, custodire dataset!"
+          "path": "staging/test/test_001.txt",
+          "content": "Test file 001\nAlpha payload for deliberation.\n"
         }
       },
       {
-        "id": "P1",
+        "id": "A2",
+        "type": "fs.write",
+        "params": {
+          "path": "staging/test/test_002.txt",
+          "content": "Test file 002\nBeta payload for deliberation.\n"
+        }
+      },
+      {
+        "id": "A3",
+        "type": "fs.write",
+        "params": {
+          "path": "staging/test/test_003.txt",
+          "content": "Test file 003\nGamma payload for deliberation.\n"
+        }
+      },
+      {
+        "id": "A4",
         "type": "ingest.promote",
         "items": [
-          {"src": "staging/new/clip_0001.txt", "relative_dst": "session42/clip_0001.txt",
-           "tags": {"lang": "en", "archetype": "UGC_9x16_1080"}}
+          {
+            "src": "staging/test/test_001.txt",
+            "relative_dst": "test/test_001.txt",
+            "tags": {
+              "test_id": "test_001",
+              "content_type": "text/plain",
+              "phase": "deliberation_test"
+            }
+          },
+          {
+            "src": "staging/test/test_002.txt",
+            "relative_dst": "test/test_002.txt",
+            "tags": {
+              "test_id": "test_002",
+              "content_type": "text/plain",
+              "phase": "deliberation_test"
+            }
+          },
+          {
+            "src": "staging/test/test_003.txt",
+            "relative_dst": "test/test_003.txt",
+            "tags": {
+              "test_id": "test_003",
+              "content_type": "text/plain",
+              "phase": "deliberation_test"
+            }
+          }
         ]
       }
     ]

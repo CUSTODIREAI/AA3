@@ -2,6 +2,10 @@
 from __future__ import annotations
 import argparse, json, sys, yaml, time
 from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from src.agents.agent_wrapper import append_transcript, read_text, save_json, call_proposer, call_critic
 
 def load_cfg():

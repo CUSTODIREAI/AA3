@@ -32,72 +32,93 @@ def extract_json_from_codex_output(output: str) -> dict:
     Extract valid JSON from Codex CLI output.
 
     Codex outputs include metadata, thinking blocks, and the actual JSON response.
-    We need to find the largest valid JSON object in the output.
+    The response typically comes AFTER all the [2025-] timestamp lines and "codex" line.
     """
-    # Strategy: find all potential JSON blocks and validate them
     lines = output.split('\n')
 
-    # Find all lines that start with '{'
-    potential_starts = []
+    # Find all "codex" lines (Codex outputs thinking summaries with codex markers)
+    codex_markers = []
     for i, line in enumerate(lines):
         stripped = line.strip()
-        if stripped.startswith('{') and len(stripped) > 5:  # Not just "{"
+        if stripped == 'codex' or (stripped.startswith('codex') and '[2025-' not in line):
+            codex_markers.append(i)
+
+    # Start searching from after the LAST codex marker (the real response comes after all thinking)
+    search_start = (codex_markers[-1] + 1) if codex_markers else 0
+
+    # Find all potential JSON starts after the codex marker
+    potential_starts = []
+    for i in range(search_start, len(lines)):
+        stripped = lines[i].strip()
+        # Skip empty lines, timestamps, and metadata
+        if not stripped or stripped.startswith('[2025-') or 'tokens used' in stripped.lower():
+            continue
+        if stripped.startswith('{'):
             potential_starts.append(i)
 
-    # Try each potential start, looking for complete JSON
+    # Try each potential start
     candidates = []
     for start_idx in potential_starts:
-        # Try to find matching closing brace
         brace_count = 0
         json_lines = []
 
         for i in range(start_idx, len(lines)):
             line = lines[i]
 
-            # Stop at metadata lines
-            if 'tokens used' in line.lower() or line.startswith('[2025-'):
+            # Stop at metadata/timestamp lines
+            if ('tokens used' in line.lower() or line.startswith('[2025-')) and json_lines:
                 break
 
             json_lines.append(line)
-
-            # Count braces to find complete JSON
             brace_count += line.count('{') - line.count('}')
 
+            # Found complete JSON
             if brace_count == 0 and len(json_lines) > 1:
-                # Potentially complete JSON
                 json_text = '\n'.join(json_lines)
                 try:
                     parsed = json.loads(json_text)
-                    candidates.append((len(json_text), parsed, json_text))
-                    break  # Found valid JSON from this start point
+                    # Prioritize JSONs with required fields
+                    has_plan_id = 'plan_id' in parsed or 'approved' in parsed
+                    score = len(json_text) + (1000 if has_plan_id else 0)
+                    candidates.append((score, parsed, json_text))
+                    break
                 except json.JSONDecodeError:
                     continue
 
-    # Return the largest valid JSON (most likely to be the actual response)
+    # Return highest scoring candidate
     if candidates:
         candidates.sort(key=lambda x: x[0], reverse=True)
-        return candidates[0][1]  # Return parsed dict
+        return candidates[0][1]
 
-    # Fallback: try to find JSON by looking for specific patterns
-    # Look for plan_id or reasoning fields
-    json_pattern = r'\{[^{}]*"plan_id"[^{}]*\}'
-    matches = re.finditer(json_pattern, output, re.DOTALL)
-    for match in matches:
+    # Last resort: try to extract any JSON-like structure
+    import re
+    # Look for JSON with "plan_id" or "approved" fields
+    pattern = r'\{[^{}]*?"(?:plan_id|approved)"[^{}]*?\}'
+    for match in re.finditer(pattern, output, re.DOTALL):
+        # Try to expand to full object by counting braces
+        start = match.start()
+        brace_count = 0
+        end = start
+        for i in range(start, len(output)):
+            if output[i] == '{':
+                brace_count += 1
+            elif output[i] == '}':
+                brace_count -= 1
+            if brace_count == 0:
+                end = i + 1
+                break
+
         try:
-            # Try to expand to full JSON
-            start = match.start()
-            end = output.find('\n[2025-', start)  # Stop at timestamp
-            if end == -1:
-                end = output.find('\ntokens used', start)
-            if end == -1:
-                end = len(output)
-
-            json_text = output[start:end].strip()
+            json_text = output[start:end]
             return json.loads(json_text)
         except:
             continue
 
-    raise ValueError(f"Could not extract valid JSON from Codex output. Output:\n{output[:500]}...")
+    # Save full output for debugging
+    debug_file = Path('debug_codex_output.txt')
+    debug_file.write_text(output, encoding='utf-8')
+
+    raise ValueError(f"Could not extract valid JSON from Codex output. Full output saved to {debug_file}\n\nFirst 1000 chars:\n{output[:1000]}...")
 
 
 # ---- Codex CLI invocation ----
@@ -215,35 +236,38 @@ def call_critic(proposal: dict, history: list[dict]) -> dict:
     """
     history_summary = f"This is critique turn {len([h for h in history if h.get('phase') == 'critique']) + 1}"
 
-    prompt = f"""You are a Critic agent reviewing a dataset curation plan.
+    prompt = f"""You are a CRITIC reviewing a plan. DO NOT create a new plan - only review the existing one.
 
-PROPOSAL:
+PLAN TO REVIEW:
 {json.dumps(proposal, indent=2)}
 
-HISTORY:
-{history_summary}
+REVIEW CRITERIA:
+1. Files created in staging/ or workspace/
+2. Plan ends with ingest.promote
+3. Tags present in promotion items
+4. No privileged docker
+5. Actions will work correctly
 
-YOUR TASK:
-Review the proposal against these criteria:
-1. Files are created in staging/ or workspace/ (writable roots)
-2. Plan ends with ingest.promote action
-3. Promotion items include tags
-4. No privileged docker flags
-5. Actions are valid and will work
+YOUR OUTPUT MUST BE A REVIEW, NOT A PLAN.
 
-OUTPUT REQUIREMENTS:
-Return ONLY valid JSON (no markdown, no explanations):
+Required JSON format (REVIEW structure, not plan structure):
 {{
-  "approved": true/false,
-  "reasons": ["reason 1", "reason 2", ...],
-  "required_changes": ["change 1", ...],  // only if not approved
-  "plan": {{...}}  // final plan (same as proposal if approved, or edited version)
+  "approved": true,
+  "reasons": ["Meets all criteria", "Files in staging/", "Has ingest.promote with tags"],
+  "plan": <copy the entire proposal here without changes if approved>
 }}
 
-If approved=true, plan will execute immediately.
-If approved=false, proposer will refine.
+OR if changes needed:
+{{
+  "approved": false,
+  "reasons": ["Missing X", "Problem with Y"],
+  "required_changes": ["Add X", "Fix Y"],
+  "plan": <edited version of proposal>
+}}
 
-Output JSON now:"""
+DO NOT return a plan with "plan_id" and "actions" - return a REVIEW with "approved" and "reasons".
+
+Output review JSON now:"""
 
     # Call Codex
     output = call_codex_cli(prompt)

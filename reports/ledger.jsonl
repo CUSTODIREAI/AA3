@@ -17,3 +17,10 @@
 {"ts": "2025-10-28T17:47:14Z", "kind": "action_result", "action_id": "W1", "type": "fs.write", "ok": true, "path": "staging/new/clip_0001.txt"}
 {"ts": "2025-10-28T17:47:14Z", "kind": "action_result", "action_id": "P1", "type": "ingest.promote", "ok": true, "results": [{"src": "/mnt/x/data_from_helper/custodire-aa-system/staging/new/clip_0001.txt", "dst": "dataset/2025/10/28/session42/clip_0001.txt", "ok": true, "sha256": "b183f20f48ce1584885ad39f433acda0835e8704c76238ac96273e30326c1474"}]}
 {"ts": "2025-10-28T17:47:14Z", "kind": "plan_execution_complete", "plan_id": "smoke-001"}
+{"ts": "2025-10-28T18:22:51Z", "kind": "scorecard_generated", "report": "reports/diversity_report.json"}
+{"ts": "2025-10-28T18:22:51Z", "kind": "plan_ready", "hunt": "plans/hunt_plan.json", "reviewed": "plans/reviewed_plan.json"}
+{"ts": "2025-10-28T18:22:51Z", "kind": "action_result", "action_id": "A1", "type": "fs.write", "ok": true, "path": "staging/test/test_001.txt"}
+{"ts": "2025-10-28T18:22:51Z", "kind": "action_result", "action_id": "A2", "type": "fs.write", "ok": true, "path": "staging/test/test_002.txt"}
+{"ts": "2025-10-28T18:22:51Z", "kind": "action_result", "action_id": "A3", "type": "fs.write", "ok": true, "path": "staging/test/test_003.txt"}
+{"ts": "2025-10-28T18:22:51Z", "kind": "action_result", "action_id": "A4", "type": "ingest.promote", "ok": true, "results": [{"src": "/mnt/x/data_from_helper/custodire-aa-system/staging/test/test_001.txt", "dst": "dataset/2025/10/28/test/test_001.txt", "ok": true, "sha256": "8f4faf81134d3a33cf52ddba7e036a22b03dbaf348df9d7b872e9ae48ff20b27"}, {"src": "/mnt/x/data_from_helper/custodire-aa-system/staging/test/test_002.txt", "dst": "dataset/2025/10/28/test/test_002.txt", "ok": true, "sha256": "f922cb794df6e1ae0aee4624a9dd6f24a49087e575a90ae39bf3caf011294875"}, {"src": "/mnt/x/data_from_helper/custodire-aa-system/staging/test/test_003.txt", "dst": "dataset/2025/10/28/test/test_003.txt", "ok": true, "sha256": "e065a91e6a85a5b3e47053c36b61a1ea9a5a3f9f72adc610c7ad904b7deaa604"}]}
+{"ts": "2025-10-28T18:22:51Z", "kind": "plan_execution_complete", "plan_id": "c3f5999f-8d79-4f42-b6ab-79bda1cfa3b5"}
