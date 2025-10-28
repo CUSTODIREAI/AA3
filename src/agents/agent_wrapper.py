@@ -131,19 +131,34 @@ def _call_codex_exec(prompt: str) -> str:
     # Find the actual response (usually after "codex" line and metadata)
     lines = output.split('\n')
 
-    # Look for JSON-like content or the main response
-    json_start = -1
+    # Look for the LAST occurrence of JSON (not the example in the prompt)
+    # Strategy: find all { lines, take the last one that's near the end
+    json_candidates = []
     for i, line in enumerate(lines):
-        if line.strip().startswith('{'):
-            json_start = i
-            break
+        stripped = line.strip()
+        if stripped.startswith('{') and not stripped.startswith('{...'):
+            json_candidates.append(i)
 
-    if json_start >= 0:
-        return '\n'.join(lines[json_start:])
+    # Take the last JSON block (should be the actual response, not prompt example)
+    if json_candidates:
+        json_start = json_candidates[-1]
 
-    # Fallback: return everything after the separator line
-    for i, line in enumerate(lines):
-        if 'codex' in line.lower() and i < len(lines) - 1:
+        # Extract from that line to the end, but stop at "tokens used" or similar metadata
+        json_lines = []
+        for line in lines[json_start:]:
+            if 'tokens used' in line.lower() or line.startswith('[2025-'):
+                break
+            json_lines.append(line)
+
+        result = '\n'.join(json_lines).strip()
+        # Verify it's valid JSON structure
+        if result.startswith('{') and result.endswith('}'):
+            return result
+
+    # Fallback: return everything after the last "codex" marker
+    for i in range(len(lines) - 1, -1, -1):
+        line = lines[i]
+        if 'codex' in line.lower() and '[2025-' not in line:
             return '\n'.join(lines[i+1:]).strip()
 
     return output
