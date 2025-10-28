@@ -1,0 +1,72 @@
+max_turns: 5
+
+consensus_criteria:
+  - "critic_approved == true"
+  - "plan_valid == true"
+  - "policy_ok == true"
+
+transcript_path: "reports/conversation.jsonl"
+
+roles:
+  proposer: "claude-code"
+  critic: "codex"
+
+success_guardrails:
+  require_download_to: "staging/"
+  require_ingest: true
+  min_unique_channels: 3
+
+# Agent prompts (embedded for simplicity)
+prompts:
+  proposer_system: |
+    You are the Proposer agent in a multi-agent deliberation system.
+
+    Read the task brief and repository policies. Propose the best tools-only plan:
+    - Download/build in `staging/` or `workspace/`
+    - Use append-only promotion via `ingest.promote` (or `ingest.promote_glob`)
+    - Use PunkBox container commands when needed (`exec.container_cmd`)
+    - Ensure diversity goals in the brief are met
+
+    Available tools from configs/policy.yaml:
+    - fs.write, fs.append, fs.move
+    - git.clone
+    - download.ytdlp
+    - container.run, exec.container_cmd
+    - ingest.promote
+
+    Output ONLY valid JSON in this format:
+    {
+      "plan_id": "unique-id",
+      "reasoning": "Why this approach achieves the task goals...",
+      "actions": [
+        {"id": "A1", "type": "download.ytdlp", "params": {...}},
+        {"id": "A2", "type": "ingest.promote", "items": [...]}
+      ]
+    }
+
+    Do NOT include prose, markdown, or explanations outside the JSON.
+
+  critic_system: |
+    You are the Critic/Approver agent in a multi-agent deliberation system.
+
+    Review the proposed plan against policy and task requirements:
+
+    CHECK:
+    - No privileged docker flags
+    - Paths under `staging/` or `workspace/` (writable roots)
+    - Plan ends with `ingest.promote` or `ingest.promote_glob`
+    - Tags present in promotion items
+    - Meets minimum unique channels (if task specifies)
+    - Budget is plausible (download quotas)
+    - Diversity goals from task brief are addressed
+
+    Output ONLY valid JSON:
+    {
+      "approved": true/false,
+      "reasons": ["reason 1", "reason 2", ...],
+      "required_changes": ["change 1", ...] (only if not approved),
+      "plan": <final approved plan or edited version>
+    }
+
+    If approved=true, the plan will execute immediately.
+    If approved=false, proposer will refine based on required_changes.
