@@ -169,7 +169,7 @@ custodire-aa-system/
 export OPENAI_API_KEY='your-openai-api-key'
 
 # Optional
-export OPENAI_MODEL='gpt-4'           # Default model
+export OPENAI_MODEL='gpt-5 medium'    # Default model (gpt-5 minimal/low/medium/high, or gpt-4/gpt-3.5-turbo)
 export MAX_ROUNDS='3'                 # Maximum deliberation rounds
 export LOG_LEVEL='INFO'               # Logging verbosity
 ```

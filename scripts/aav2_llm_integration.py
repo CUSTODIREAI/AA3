@@ -78,12 +78,26 @@ def call_claude_api(prompt: str, system_prompt: str = "", max_tokens: int = 4096
 
 def call_openai_api(prompt: str, system_prompt: str = "", max_tokens: int = 4096) -> LLMResponse:
     """
-    Call OpenAI API (GPT-4/Codex) for reasoning.
+    Call OpenAI API (GPT-5/GPT-4/etc.) for reasoning.
+
+    Model selection (priority order):
+    1. OPENAI_MODEL environment variable
+    2. Default: "gpt-5 medium"
+
+    Supported models:
+    - gpt-5 minimal  (fastest, limited reasoning)
+    - gpt-5 low      (balanced speed/reasoning)
+    - gpt-5 medium   (default, good balance)
+    - gpt-5 high     (max reasoning depth)
+    - gpt-4, gpt-3.5-turbo (legacy)
     """
     try:
         import openai
 
         client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+
+        # Get model from environment or use GPT-5 medium as default
+        model = os.environ.get("OPENAI_MODEL", "gpt-5 medium")
 
         messages = []
         if system_prompt:
@@ -91,14 +105,14 @@ def call_openai_api(prompt: str, system_prompt: str = "", max_tokens: int = 4096
         messages.append({"role": "user", "content": prompt})
 
         response = client.chat.completions.create(
-            model="gpt-4",
+            model=model,
             messages=messages,
             max_tokens=max_tokens
         )
 
         return LLMResponse(
             content=response.choices[0].message.content,
-            model="gpt-4",
+            model=model,
             tokens_used=response.usage.total_tokens,
             success=True
         )
