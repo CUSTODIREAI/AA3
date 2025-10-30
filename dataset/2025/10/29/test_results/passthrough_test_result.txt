@@ -1,0 +1,9 @@
+Agent Passthrough Mode test completed successfully.
+
+Verified capabilities:
+- Command execution in sandbox
+- File creation in workspace
+- Read access to dataset
+- Python availability
+
+All core functionality working as expected.

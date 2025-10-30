@@ -1,0 +1,22 @@
+{
+  "timestamp": "2024-01-01T00:00:00Z",
+  "image": "custodire/dfl:base-cuda11.8-tf2.13.1",
+  "artifact_path": "docker/images/custodire_dfl-base-cuda11.8-tf2.13.1-20240101-000000.tar",
+  "sha256": "<sha256>",
+  "labels": {
+    "oc.title": "DeepFaceLab Base (CUDA 11.8, TF 2.13.1)",
+    "oc.vendor": "Custodire"
+  },
+  "notes": "Built on host with driver 545.x; see test logs."
+}
+{
+  "timestamp": "2024-01-01T00:00:00Z",
+  "image": "custodire/dfl:dfl-cuda11.8-tf2.13.1",
+  "artifact_path": "docker/images/custodire_dfl-dfl-cuda11.8-tf2.13.1-20240101-000000.tar",
+  "sha256": "<sha256>",
+  "labels": {
+    "oc.title": "DeepFaceLab (CUDA 11.8, TF 2.13.1)",
+    "oc.vendor": "Custodire"
+  },
+  "notes": "DFL_REF=master; see /opt/dfl/DFL_COMMIT inside image for exact commit."
+}

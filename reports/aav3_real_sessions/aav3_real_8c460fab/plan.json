@@ -1,0 +1,40 @@
+{
+  "approach": "Build two CUDA 11.8-based images (base + DFL) tuned for RTX 4090 using official NVIDIA runtime + cuDNN, TensorFlow GPU 2.12–2.14 compatible with 11.8, and DeepFaceLab cloned at a pinned release. Exclude pretrained models from images, provide scripts to build, test on real 4090, and document end-to-end workflow.",
+  "steps": [
+    "Research latest DFL, CUDA, cuDNN, TF versions",
+    "Decide pinned versions and compatibility matrix",
+    "Design image layout and labels/metadata",
+    "Author docker/dfl-base.Dockerfile",
+    "Author docker/dfl.Dockerfile",
+    "Author docker/dfl.dockerignore",
+    "Create non-root user and workspace structure",
+    "Add TF GPU, addons, and ML deps via pip",
+    "Install cuDNN apt packages for CUDA 11.8",
+    "Clone DFL repo at pinned tag/commit",
+    "Strip pretrained models from image",
+    "Add entrypoint wrapper for DFL CLI",
+    "Write docker/build_dfl_images.sh",
+    "Write docker/test_dfl_rtx4090.sh",
+    "Write docker/dfl-compose.yaml",
+    "Document usage in docs/dfl_docker_images.md",
+    "Document training in docs/dfl_training_workflow.md",
+    "Build images and export to docker/images/",
+    "Run RTX 4090 validation (nvidia-smi, TF GPU)",
+    "Run DFL extract/train/merge smoke tests",
+    "Record SHA-256 and metadata in evidence ledger",
+    "Iterate fixes for any build/runtime issues"
+  ],
+  "unknowns": [
+    "DeepFaceLab latest stable release/tag and recommended Python version (3.9 vs 3.10) as of now",
+    "Exact TensorFlow GPU version that is most stable with DFL on CUDA 11.8 (2.12/2.13/2.14) and matching tensorflow-addons version",
+    "Correct cuDNN 8.x minor version for CUDA 11.8 (e.g., 8.9.x) and apt package names for Ubuntu 22.04 from NVIDIA repo",
+    "Any known 4090/Ada-specific TF issues or required env flags (e.g., TF_FORCE_GPU_ALLOW_GROWTH, TF_ENABLE_ONEDNN_OPTS)",
+    "Whether DFL currently requires specific detector backends or extras (onnxruntime-gpu, facexlib, insightface) on Linux builds",
+    "Whether DFL Linux CLI entrypoints (DeepFaceLab/main.py) have breaking changes or flags that must be updated",
+    "Driver minimum version confirmation for RTX 4090 in container host (>=520) and recommended nvidia-container-toolkit version",
+    "Licensing and inclusion policy for DFL’s embedded model files (which directories to exclude safely while keeping code runnable)",
+    "Best performing FFmpeg build/features needed by DFL (system ffmpeg sufficient vs custom compile)",
+    "Compose GPU spec to prefer (device_requests vs gpus: all shorthand) for widest docker compose compatibility"
+  ],
+  "rationale": "Using official NVIDIA CUDA 11.8 + cuDNN runtime images ensures Ada (RTX 4090) support with minimal friction. Pinning a TensorFlow GPU version known to work with 11.8 avoids driver/runtime mismatches and leverages NVIDIA’s container ecosystem. Separating a reusable base image from the DFL image speeds iteration and keeps caching effective. Excluding pretrained models satisfies privacy/security requirements while allowing model download into mounted volumes at runtime. Multi-stage builds, non-root user, and minimal layers follow Docker best practices. A dedicated test script validates the full DFL pipeline on real hardware, ensuring practical RTX 4090 compatibility before integration. Labels and exported tarballs with SHA-256 integrate cleanly with Custodire’s ingest and evidence tracking."
+}

@@ -1,0 +1,182 @@
+{
+  "plan_id": "plan-rtx4090-dfl-refine-2025-10-29-01",
+  "reasoning": "Refines prior plan by promoting files to docker/ and docs/ paths (not dataset/), ensuring Dockerfile COPY and scripts resolve correctly while keeping all other content unchanged.",
+  "actions": [
+    {
+      "id": "A1",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docker/dfl-base.Dockerfile",
+        "content": "FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 AS base\n\nARG DFL_UID=1000\nARG DFL_GID=1000\nARG BUILD_DATE\nENV DEBIAN_FRONTEND=noninteractive\n\nRUN apt-get update && apt-get install -y --no-install-recommends \\\n    python3.10 python3-pip python3-venv python3-dev \\\n    build-essential git wget curl ca-certificates \\\n    ffmpeg libsm6 libxext6 libxrender1 libglib2.0-0 \\\n    libgl1 libgtk2.0-0 libgtk-3-0 libjpeg-dev zlib1g-dev pkg-config \\\n  && rm -rf /var/lib/apt/lists/*\n\nRUN python3 -m pip install --upgrade pip setuptools wheel\n\nRUN groupadd -g ${DFL_GID} dfl && useradd -m -u ${DFL_UID} -g ${DFL_GID} -s /bin/bash dfl\n\nENV PATH=/home/dfl/.local/bin:$PATH\nENV NVIDIA_VISIBLE_DEVICES=all\nENV NVIDIA_DRIVER_CAPABILITIES=compute,utility\nENV TF_FORCE_GPU_ALLOW_GROWTH=1\nENV TF_CPP_MIN_LOG_LEVEL=2\n\n# Core Python deps + TensorFlow GPU (CUDA 11.8)\nRUN pip3 install --no-cache-dir \\\n    \"numpy<2\" scipy==1.10.1 pandas==1.5.3 \\\n    tqdm==4.66.1 pillow==9.5.0 scikit-image==0.20.0 scikit-learn==1.2.2 \\\n    h5py==3.8.0 psutil==5.9.5 \\\n    opencv-python==4.8.1.78 \\\n    \"tensorflow[and-cuda]==2.13.*\"\n\nRUN mkdir -p /workspace/{data,data_src,data_dst,models,aligned,output} && \\\n    chown -R dfl:dfl /workspace\n\nUSER dfl\nWORKDIR /workspace\n\n# Build-time smoke test (won't fail build if GPU not present, but imports TF)\nRUN python3 - <<'PY' || true\nimport tensorflow as tf\nprint('TF:', tf.__version__)\nprint('GPUs:', tf.config.list_physical_devices('GPU'))\nPY\n\nUSER root\nLABEL org.opencontainers.image.title=\"Custodire DFL Base (RTX 4090)\" \\\n      org.opencontainers.image.vendor=\"Custodire\" \\\n      org.opencontainers.image.version=\"cuda-11.8-tf-2.13\" \\\n      org.opencontainers.image.source=\"https://github.com/iperov/DeepFaceLab\" \\\n      org.opencontainers.image.description=\"Base image with CUDA 11.8, cuDNN, Python 3.10, TensorFlow GPU for DeepFaceLab\" \\\n      com.custodire.gpu=\"RTX 4090\" \\\n      com.custodire.cuda=\"11.8\" \\\n      com.custodire.tensorflow=\"2.13\" \\\n      com.custodire.build_date=\"${BUILD_DATE}\"\n\nUSER dfl\n"
+      }
+    },
+    {
+      "id": "A2",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docker/dfl.Dockerfile",
+        "content": "FROM custodire/dfl-base:rtx4090 AS runtime\n\nARG DFL_REPO=https://github.com/iperov/DeepFaceLab.git\nARG DFL_REF=master\nARG BUILD_DATE\n\nUSER root\nRUN git clone --depth=1 ${DFL_REPO} /opt/DeepFaceLab && \\\n    cd /opt/DeepFaceLab && \\\n    (git checkout -q ${DFL_REF} || true)\n\n# Optional: install any additional Python deps if DFL provides a requirements file\n# Many deps are already satisfied by the base image\nRUN bash -lc 'if [ -f /opt/DeepFaceLab/requirements-colab.txt ]; then \\\n      pip3 install --no-cache-dir -r /opt/DeepFaceLab/requirements-colab.txt || true; \\\n    fi'\n\n# Entrypoint wrapper\nCOPY docker/entrypoint.sh /opt/dfl/entrypoint.sh\nRUN chmod +x /opt/dfl/entrypoint.sh\n\nENV DFL_WORKSPACE=/workspace\nRUN mkdir -p /workspace/{data,data_src,data_dst,models,aligned,output} && \\\n    chown -R dfl:dfl /workspace\n\nLABEL org.opencontainers.image.title=\"Custodire DeepFaceLab (RTX 4090)\" \\\n      org.opencontainers.image.vendor=\"Custodire\" \\\n      org.opencontainers.image.version=\"dfl-latest\" \\\n      org.opencontainers.image.source=\"https://github.com/iperov/DeepFaceLab\" \\\n      org.opencontainers.image.description=\"DeepFaceLab with CUDA 11.8 / TensorFlow GPU, tuned for RTX 4090\" \\\n      com.custodire.gpu=\"RTX 4090\" \\\n      com.custodire.cuda=\"11.8\" \\\n      com.custodire.tensorflow=\"2.13\" \\\n      com.custodire.build_date=\"${BUILD_DATE}\"\n\nUSER dfl\nWORKDIR /workspace\nENTRYPOINT [\"/opt/dfl/entrypoint.sh\"]\n"
+      }
+    },
+    {
+      "id": "A3",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docker/dfl.dockerignore",
+        "content": ".git\n.gitignore\n**/__pycache__/\n**/*.pyc\nnode_modules\n.env\n.env.*\n*.tar\n*.zip\n*.7z\n*.mp4\n*.avi\n*.mkv\nworkspace/*\ndocker/images/*\ndataset/*\nmodels/*\naligned/*\noutput/*\ndata/*\ndata_src/*\ndata_dst/*\n"
+      }
+    },
+    {
+      "id": "A4",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docker/build_dfl_images.sh",
+        "content": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Build script for Custodire DFL images (RTX 4090)\n# Requires: Docker 20.10+, NVIDIA Container Toolkit, driver 520+\n\nROOT_DIR=$(cd \"$(dirname \"$0\")/..\" && pwd)\nBUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)\nDFL_REPO=${DFL_REPO:-https://github.com/iperov/DeepFaceLab.git}\nDFL_REF=${DFL_REF:-master}\nTAG_BASE=${TAG_BASE:-custodire/dfl-base:rtx4090}\nTAG_DFL=${TAG_DFL:-custodire/dfl:rtx4090}\n\nexport DOCKER_BUILDKIT=1\ncd \"$ROOT_DIR\"\n\necho \"[+] Building base image: $TAG_BASE\"\ndocker build \\\n  --build-arg BUILD_DATE=\"$BUILD_DATE\" \\\n  -f docker/dfl-base.Dockerfile \\\n  -t \"$TAG_BASE\" .\n\necho \"[+] Building DFL image: $TAG_DFL\"\ndocker build \\\n  --build-arg BUILD_DATE=\"$BUILD_DATE\" \\\n  --build-arg DFL_REPO=\"$DFL_REPO\" \\\n  --build-arg DFL_REF=\"$DFL_REF\" \\\n  -f docker/dfl.Dockerfile \\\n  -t \"$TAG_DFL\" .\n\nmkdir -p docker/images\n\n# Save images as tarballs and record digests\nfor IMG in \"$TAG_BASE\" \"$TAG_DFL\"; do\n  SAFE_TAG=${IMG//\\//-}\n  TAR_PATH=\"docker/images/${SAFE_TAG}.tar\"\n  echo \"[+] Saving $IMG to $TAR_PATH\"\n  docker save -o \"$TAR_PATH\" \"$IMG\"\n  sha256sum \"$TAR_PATH\" > \"${TAR_PATH}.sha256\"\n  DIGEST=$(docker image inspect --format='{{index .RepoDigests 0}}' \"$IMG\" || true)\n  echo \"$IMG -> $DIGEST\" | tee -a docker/images/IMAGES.txt\ndone\n\necho \"[✓] Build complete. Images saved under docker/images/.\"\n"
+      }
+    },
+    {
+      "id": "A5",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docker/test_dfl_rtx4090.sh",
+        "content": "#!/usr/bin/env bash\nset -euo pipefail\n\nIMG=${IMG:-custodire/dfl:rtx4090}\nWS_HOST=${WS_HOST:-$(pwd)/workspace}\nmkdir -p \"$WS_HOST\"/data \"$WS_HOST\"/data_src \"$WS_HOST\"/data_dst \"$WS_HOST\"/aligned \"$WS_HOST\"/models \"$WS_HOST\"/output\n\nrun() {\n  echo \"> $*\"\n  eval \"$@\"\n}\n\necho \"[1/4] Checking GPU visibility (nvidia-smi)\"\nrun \"docker run --rm --gpus all --entrypoint nvidia-smi $IMG\"\n\necho \"[2/4] Verifying TensorFlow GPU availability\"\nrun \"docker run --rm --gpus all -v \\\"$WS_HOST\\\":/workspace:rw --entrypoint python3 $IMG - <<'PY'\\nimport tensorflow as tf\\nprint('TF:', tf.__version__)\\nprint('GPUs:', tf.config.list_physical_devices('GPU'))\\nassert tf.config.list_physical_devices('GPU'), 'No GPU detected in TF'\\nprint('OK')\\nPY\"\n\necho \"[3/4] Creating a synthetic sample video with ffmpeg (no faces, smoke test)\"\nrun \"docker run --rm --gpus all -v \\\"$WS_HOST\\\":/workspace:rw --entrypoint bash $IMG -lc \\\"ffmpeg -y -f lavfi -i testsrc=size=1280x720:rate=30 -t 3 -pix_fmt yuv420p /workspace/data/sample.mp4\\\"\"\n\necho \"[4/4] Running DFL scripts (extract help + dry run)\"\n# List DFL repo and try a help command for main.py\nrun \"docker run --rm --gpus all -v \\\"$WS_HOST\\\":/workspace:rw --entrypoint bash $IMG -lc \\\"ls -la /opt/DeepFaceLab && python3 /opt/DeepFaceLab/main.py -h || true\\\"\"\n\necho \"[i] Optional: For a full E2E test, place a real face video at \\\"$WS_HOST/data/sample.mp4\\\" and run extraction/training/merge commands inside the container.\"\n"
+      }
+    },
+    {
+      "id": "A6",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docker/dfl-compose.yaml",
+        "content": "version: \"3.8\"\nservices:\n  dfl:\n    image: custodire/dfl:rtx4090\n    container_name: dfl_rtx4090\n    gpus: all\n    environment:\n      - NVIDIA_VISIBLE_DEVICES=all\n      - NVIDIA_DRIVER_CAPABILITIES=compute,utility\n      - TF_FORCE_GPU_ALLOW_GROWTH=1\n      - DFL_WORKSPACE=/workspace\n    working_dir: /workspace\n    shm_size: \"16g\"\n    user: \"${UID:-1000}:${GID:-1000}\"\n    volumes:\n      - ./workspace:/workspace:rw\n    command: [\"bash\"]\n"
+      }
+    },
+    {
+      "id": "A7",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docs/dfl_docker_images.md",
+        "content": "# Custodire DeepFaceLab Docker Images (RTX 4090)\n\nOverview\n- Base image: CUDA 11.8 + cuDNN, Python 3.10, TensorFlow 2.13 GPU\n- DFL image: Includes DeepFaceLab, workspace structure, and entrypoint\n- Targets NVIDIA RTX 4090 (Ada), driver 520+\n\nPrerequisites\n- NVIDIA driver 520+ on host\n- Docker 20.10+ and NVIDIA Container Toolkit\n- Sufficient disk space: ~5GB base, ~8GB DFL\n\nBuild\n- ./docker/build_dfl_images.sh\n- Outputs tarballs and digests in docker/images/\n\nRun (interactive)\n- docker run --rm -it --gpus all \\\n    -v $(pwd)/workspace:/workspace:rw \\\n    custodire/dfl:rtx4090 bash\n\nGPU Test\n- python -c \"import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))\"\n- nvidia-smi\n\nWorkspace Layout (/workspace)\n- data/, data_src/, data_dst/, models/, aligned/, output/\n\nSecurity & Data\n- No pretrained models included\n- Mount datasets as read-only if desired (e.g., -v /data:/workspace/data:ro)\n- TF_FORCE_GPU_ALLOW_GROWTH=1 to avoid pre-allocating full VRAM\n\nMetadata\n- OCI labels encode CUDA/TF/DFL versions and build date\n\nNotes\n- RTX 4090 VRAM 24GB allows larger batch sizes\n- For HEVC: ensure ffmpeg supports libx265 on host (provided in image)\n"
+      }
+    },
+    {
+      "id": "A8",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docs/dfl_training_workflow.md",
+        "content": "# DeepFaceLab Training Workflow (RTX 4090)\n\n1) Prepare Data\n- Place source video(s) in /workspace/data_src and destination in /workspace/data_dst\n\n2) Extract Faces\n- python /opt/DeepFaceLab/main.py extract \\\n    --input-dir /workspace/data_src \\\n    --output-dir /workspace/aligned \\\n    --detector s3fd --max-resolution 1080\n\n3) Train Model (example SAEHD)\n- python /opt/DeepFaceLab/main.py train SAEHD \\\n    --workspace /workspace \\\n    --model-dir /workspace/models/saehd \\\n    --iterations 1000 --batch-size-gpu 8\n\n4) Merge\n- python /opt/DeepFaceLab/main.py merge \\\n    --workspace /workspace \\\n    --output-dir /workspace/output \\\n    --model-dir /workspace/models/saehd\n\n5) Review Outputs\n- Outputs in /workspace/output\n\nTips\n- Increase batch size leveraging 24GB VRAM; monitor with nvidia-smi\n- Keep TF growth enabled to avoid OOM spikes\n- Document working CUDA/cuDNN/TF combos per build labels\n"
+      }
+    },
+    {
+      "id": "A9",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docker/entrypoint.sh",
+        "content": "#!/usr/bin/env bash\nset -e\numask 0002\nmkdir -p /workspace/{data,data_src,data_dst,models,aligned,output}\n# best-effort chown if mounted with matching UID/GID\nchown -R $(id -u):$(id -g) /workspace 2>/dev/null || true\n\nif [[ $# -gt 0 ]]; then\n  exec \"$@\"\nelse\n  echo \"DeepFaceLab container ready. Examples:\"\n  echo \"  python /opt/DeepFaceLab/main.py -h\"\n  echo \"  python /opt/DeepFaceLab/main.py extract --help\"\n  exec bash\nfi\n"
+      }
+    },
+    {
+      "id": "A11",
+      "type": "ingest.promote",
+      "items": [
+        {
+          "src": "staging/docker/dfl-base.Dockerfile",
+          "relative_dst": "docker/dfl-base.Dockerfile",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "dockerfile",
+            "image": "custodire/dfl-base:rtx4090",
+            "gpu": "rtx4090",
+            "cuda": "11.8",
+            "tensorflow": "2.13",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        },
+        {
+          "src": "staging/docker/dfl.Dockerfile",
+          "relative_dst": "docker/dfl.Dockerfile",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "dockerfile",
+            "image": "custodire/dfl:rtx4090",
+            "gpu": "rtx4090",
+            "cuda": "11.8",
+            "tensorflow": "2.13",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        },
+        {
+          "src": "staging/docker/dfl.dockerignore",
+          "relative_dst": "docker/dfl.dockerignore",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "dockerignore",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        },
+        {
+          "src": "staging/docker/build_dfl_images.sh",
+          "relative_dst": "docker/build_dfl_images.sh",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "script",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        },
+        {
+          "src": "staging/docker/test_dfl_rtx4090.sh",
+          "relative_dst": "docker/test_dfl_rtx4090.sh",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "script",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        },
+        {
+          "src": "staging/docker/dfl-compose.yaml",
+          "relative_dst": "docker/dfl-compose.yaml",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "compose",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        },
+        {
+          "src": "staging/docs/dfl_docker_images.md",
+          "relative_dst": "docs/dfl_docker_images.md",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "doc",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        },
+        {
+          "src": "staging/docs/dfl_training_workflow.md",
+          "relative_dst": "docs/dfl_training_workflow.md",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "doc",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        },
+        {
+          "src": "staging/docker/entrypoint.sh",
+          "relative_dst": "docker/entrypoint.sh",
+          "tags": {
+            "component": "dfl-docker",
+            "kind": "script",
+            "phase": "refinement",
+            "fix": "path-mismatch"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "approach": "Implement an iterative factorial with input validation, document via doctest examples, and provide a small unittest suite executed under __main__.",
+  "steps": [
+    "Define iterative factorial function",
+    "Validate input and raise ValueError for negatives",
+    "Add type hints and concise docstring",
+    "Include doctest examples for 0, 1, 5, and error",
+    "Write unittest cases for typical and edge inputs",
+    "Add __main__ block to run doctest and unittests"
+  ],
+  "unknowns": [
+    "Expected Python version (assume Python 3.8+)",
+    "Whether non-integer inputs should raise TypeError or be coerced",
+    "Any upper bound or performance constraints for large n",
+    "Preferred testing style (unittest vs. pytest) and verbosity",
+    "File/module naming convention and repository location"
+  ],
+  "rationale": "An iterative implementation avoids recursion depth limits and is easy to read and test. Explicit input validation meets the negative-number requirement and prevents silent errors. Doctest examples double as documentation and quick verification, while a minimal unittest suite provides reliable regression checks for edge cases. Running both under __main__ keeps the script self-contained and simple to execute without external tooling."
+}

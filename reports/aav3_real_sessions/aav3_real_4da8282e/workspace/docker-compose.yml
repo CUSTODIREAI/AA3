@@ -1,0 +1,20 @@
+version: "3.9"
+services:
+  dfl:
+    image: custodire/dfl:tf2.13-py3.10
+    container_name: dfl
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - TF_FORCE_GPU_ALLOW_GROWTH=1
+      - TF_ENABLE_ONEDNN_OPTS=0
+    volumes:
+      - ./workspace:/workspace
+    working_dir: /workspace
+    stdin_open: true
+    tty: true

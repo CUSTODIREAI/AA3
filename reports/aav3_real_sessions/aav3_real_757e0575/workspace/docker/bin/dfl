@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Simple wrapper to invoke DeepFaceLab's main.py with pass-through args.
+# Allows commands like: `docker run ... dfl extract --input-dir ...`
+
+if [[ ! -d "/opt/DeepFaceLab" ]]; then
+  echo "DeepFaceLab not found at /opt/DeepFaceLab." >&2
+  echo "Rebuild the image or bind-mount the repo to /opt/DeepFaceLab." >&2
+  exit 1
+fi
+
+cd /opt/DeepFaceLab
+exec python -u main.py "$@"

@@ -1,0 +1,55 @@
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+# DeepFaceLab-friendly base layer without relying on local COPY.
+# Keeps build stable in restricted CI without network-dependent clones.
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    TF_CPP_MIN_LOG_LEVEL=2 \
+    TF_FORCE_GPU_ALLOW_GROWTH=true
+
+SHELL ["/bin/bash", "-lc"]
+
+# System deps commonly needed for DFL runtimes
+RUN set -euxo pipefail \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+       python3 python3-venv python3-pip python3-dev \
+       git ca-certificates curl ffmpeg \
+       libgl1 libsm6 libxext6 libxrender1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# venv
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip setuptools wheel
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# Core Python deps (keep minimal to ensure build succeeds offline)
+RUN pip install --no-cache-dir \
+      "tensorflow==2.13.*" \
+      numpy scipy scikit-image tqdm h5py \
+      opencv-python-headless==4.*
+
+# Non-root user and workspace
+RUN groupadd -g 1000 app && useradd -m -u 1000 -g 1000 app \
+    && mkdir -p /workspace/scripts \
+    && chown -R app:app /workspace
+
+USER app
+WORKDIR /workspace
+
+# Health check-ish default command
+CMD python - <<'PY'
+import json
+try:
+    import tensorflow as tf
+    print(json.dumps({
+        'ok': True,
+        'tf_version': tf.__version__,
+        'num_gpus': len(tf.config.list_physical_devices('GPU'))
+    }))
+except Exception as e:
+    print(json.dumps({'ok': False, 'error': repr(e)}))
+PY

@@ -48,3 +48,51 @@ def ingest_promote(items: list[dict], policy: Policy, plan_id: str='unknown', ac
         append_manifest(rec)
         results.append({'src':str(src),'dst':str(dst),'ok':True,'sha256':digest})
     return results
+
+def ingest_promote_glob(src_dir: str, pattern: str, relative_dst_prefix: str, tags: dict, policy: Policy, plan_id: str='unknown', actor: str='executor'):
+    """
+    Promote files matching glob pattern to immutable dataset.
+
+    Args:
+        src_dir: Source directory (e.g., "staging")
+        pattern: Glob pattern (e.g., "**/*" for all files)
+        relative_dst_prefix: Prefix for destination paths (e.g., "direct/session-123/")
+        tags: Tags to attach to all promoted files
+        policy: Policy instance for validation
+        plan_id: Plan ID for audit trail
+        actor: Actor name for audit trail
+
+    Returns:
+        List of results (one per file promoted)
+    """
+    src_path = Path(src_dir)
+    if not src_path.exists():
+        return [{'ok': False, 'error': f'src_dir not found: {src_dir}'}]
+
+    # Find all matching files
+    matched_files = list(src_path.glob(pattern))
+    matched_files = [f for f in matched_files if f.is_file()]
+
+    if not matched_files:
+        return [{'ok': False, 'error': f'no files matched pattern: {pattern}'}]
+
+    # Convert to items list for ingest_promote
+    items = []
+    for file_path in matched_files:
+        # Calculate relative path from src_dir
+        try:
+            rel_to_src = file_path.relative_to(src_path)
+        except ValueError:
+            continue
+
+        # Build destination path with prefix
+        relative_dst = str(Path(relative_dst_prefix) / rel_to_src).replace('\\', '/')
+
+        items.append({
+            'src': str(file_path),
+            'relative_dst': relative_dst,
+            'tags': tags
+        })
+
+    # Promote all items
+    return ingest_promote(items, policy, plan_id, actor)

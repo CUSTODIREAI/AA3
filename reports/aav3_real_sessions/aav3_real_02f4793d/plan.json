@@ -1,0 +1,41 @@
+{
+  "approach": "Build two reproducible CUDA 11.8-based images (base + DFL) using multi-stage Dockerfiles aligned to RTX 4090, pin exact CUDA/cuDNN/TensorFlow/Python versions from web search, and validate end-to-end DFL workflow with GPU in CI-like scripts. Use pip-managed GPU TensorFlow (11.8) or system CUDA based on verified compatibility. Tag, save, and ledger images with metadata.",
+  "steps": [
+    "Web-research exact versions via agent.passthrough_shell",
+    "Decide TF install mode (pip-cuda vs system CUDA)",
+    "Draft base Dockerfile with CUDA 11.8+cudnn on Ubuntu 22.04",
+    "Add Python 3.10, build tools, ffmpeg, OpenCV deps",
+    "Install TensorFlow GPU (pin verified version)",
+    "Harden base image (non-root user, locales, cache mounts)",
+    "Draft DFL Dockerfile FROM base (no root, workspace layout)",
+    "Clone DFL at pinned commit and install deps",
+    "Add entrypoint wrappers for common DFL commands",
+    "Create dockerignore and build/test scripts",
+    "Write compose file with GPU device requests and volumes",
+    "Add docs for usage, training workflow, and troubleshooting",
+    "Build base image with docker build and layer caching",
+    "Build DFL image with docker build and labels/metadata",
+    "Run GPU detection test (nvidia-smi) in container",
+    "Run TensorFlow GPU import and simple matmul test",
+    "Validate DFL: extract faces on sample clip",
+    "Validate DFL: quick train (~100–1000 iters)",
+    "Validate DFL: test merge to output",
+    "Export images to docker/images via docker save",
+    "Compute SHA-256 and ingest.promote to evidence ledger",
+    "Document known-good CUDA/cuDNN/TF/DFL matrix",
+    "Finalize docs and examples; note resource tips for 24GB VRAM"
+  ],
+  "unknowns": [
+    "Latest stable DeepFaceLab commit/release supporting Linux and TF2 (does DFL still require TF1.15 or is there an official TF2 branch/fork?)",
+    "Exact TensorFlow GPU version that best supports CUDA 11.8 on Linux (2.13/2.14/2.15/2.16+) and whether to prefer pip-managed CUDA via tensorflow[and-cuda]",
+    "Exact cuDNN version compatible with chosen TF and CUDA 11.8 (e.g., cuDNN 8.6.x or pip-bundled variant)",
+    "Any DFL-specific CUDA ops or custom kernels requiring system-level CUDA instead of pip-bundled CUDA",
+    "DFL Python version ceiling (does 3.10 work reliably across all scripts and plugins?)",
+    "Additional system libraries DFL may need at runtime (e.g., libgtk-3-0, tcmalloc, X11 libs) for previews or OpenCV codecs",
+    "Recommended minimal RTX 4090 driver to pair with CUDA 11.8 (driver 520+ target; confirm exact minimum)",
+    "Known issues running DFL inside containers with TF2 (eager mode impacts, memory fragmentation, TF env flags)",
+    "Best sample video(s) for deterministic CI validation and licensing constraints for inclusion in tests",
+    "Performance flags for 4090 (TF GPU memory growth, XLA, mixed precision) and their impact on DFL training stability"
+  ],
+  "rationale": "Separating a reusable CUDA 11.8 base from the DFL layer improves cache efficiency, security, and maintainability. Using Ubuntu 22.04 aligns with Python 3.10 and modern CUDA images. Pinning exact versions based on current web data prevents common 4090 breakages from mismatched TF/CUDA/cuDNN. Validating via scripted GPU checks and a minimal DFL pipeline ensures practical readiness beyond just import success. Multi-stage builds with non-root users and dockerignore reduce image size and risk. Exporting, hashing, and recording metadata support Custodire’s evidence-driven ingestion and reproducibility requirements."
+}

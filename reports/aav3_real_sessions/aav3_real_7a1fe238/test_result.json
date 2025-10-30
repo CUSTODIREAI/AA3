@@ -1,0 +1,80 @@
+{
+  "test_plan": {
+    "implementation": "Create the missing Python package and tests using a modern src layout. Implement a strict, iterative factorial function with comprehensive input validation and doctest examples. Provide a unittest suite that verifies correct outputs, error handling, and runs the doctests. Ensure tests can import from the src layout by inserting the src path into sys.path.",
+    "files_to_create": [
+      {
+        "path": "src/factorial_pkg/__init__.py",
+        "content": "'''Lightweight factorial package.'''\n\nfrom .factorial import factorial\n\n__all__ = ['factorial']\n__version__ = '0.1.0'\n"
+      },
+      {
+        "path": "src/factorial_pkg/factorial.py",
+        "content": "'''Factorial computation.\n\nProvides a strict, iterative factorial implementation with doctests.\n'''\n\ndef factorial(n: int) -> int:\n    '''\n    Compute n! for a non-negative integer n.\n\n    Parameters\n    ----------\n    n : int\n        Non-negative integer.\n\n    Returns\n    -------\n    int\n\n    Examples\n    --------\n    >>> from factorial_pkg.factorial import factorial\n    >>> factorial(0)\n    1\n    >>> factorial(5)\n    120\n    >>> factorial(10)\n    3628800\n    >>> factorial(3.0)  # floats not allowed even if integer-like\n    Traceback (most recent call last):\n    ...\n    TypeError: n must be an int, got float\n    >>> factorial(True)\n    Traceback (most recent call last):\n    ...\n    TypeError: n must be an int, got bool\n    >>> factorial(-1)\n    Traceback (most recent call last):\n    ...\n    ValueError: n must be >= 0\n    '''\n    if type(n) is not int:\n        raise TypeError(f'n must be an int, got {type(n).__name__}')\n    if n < 0:\n        raise ValueError('n must be >= 0')\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result\n"
+      },
+      {
+        "path": "tests/test_factorial.py",
+        "content": "import os\nimport sys\nimport doctest\nimport unittest\n\n# Ensure 'src' is on sys.path for src/ layout\nROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))\nSRC_DIR = os.path.join(ROOT, 'src')\nif SRC_DIR not in sys.path:\n    sys.path.insert(0, SRC_DIR)\n\nfrom factorial_pkg.factorial import factorial\nimport factorial_pkg.factorial as factorial_module\n\n\nclass TestFactorial(unittest.TestCase):\n    def test_values(self):\n        self.assertEqual(factorial(0), 1)\n        self.assertEqual(factorial(1), 1)\n        self.assertEqual(factorial(2), 2)\n        self.assertEqual(factorial(5), 120)\n        self.assertEqual(factorial(10), 3628800)\n        self.assertEqual(factorial(20), 2432902008176640000)\n\n    def test_type_error(self):\n        with self.assertRaises(TypeError):\n            factorial(3.5)\n        with self.assertRaises(TypeError):\n            factorial(True)\n        with self.assertRaises(TypeError):\n            factorial('3')\n        with self.assertRaises(TypeError):\n            factorial(None)\n\n    def test_value_error(self):\n        with self.assertRaises(ValueError):\n            factorial(-1)\n\n    def test_doctests(self):\n        failures, _ = doctest.testmod(factorial_module, optionflags=doctest.ELLIPSIS)\n        self.assertEqual(failures, 0)\n\n\nif __name__ == '__main__':\n    unittest.main()\n"
+      }
+    ],
+    "key_decisions": [
+      "Use PyPA src layout to avoid import shadowing and align with best practices",
+      "Implement strict type checking with type(n) is int to reject bools and integer-like floats",
+      "Provide clear error messages and raise ValueError for negatives",
+      "Include doctest examples in the function docstring and verify them in the unittest suite",
+      "Modify test sys.path to include src for reliable imports without packaging/install steps",
+      "Use iterative factorial for clarity and predictable performance"
+    ],
+    "status": "complete",
+    "_created_files": [
+      "reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/src/factorial_pkg/__init__.py",
+      "reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/src/factorial_pkg/factorial.py",
+      "reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/tests/test_factorial.py"
+    ]
+  },
+  "executed_tests": [
+    {
+      "test": "File exists: __init__.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: __init__.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/src/factorial_pkg/__init__.py'"
+    },
+    {
+      "test": "File exists: factorial.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/src/factorial_pkg/factorial.py'"
+    },
+    {
+      "test": "File exists: test_factorial.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: test_factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/tests/test_factorial.py'"
+    }
+  ],
+  "verdict": "needs_fixes",
+  "issues_found": [
+    {
+      "test": "Python syntax: __init__.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/src/factorial_pkg/__init__.py'"
+    },
+    {
+      "test": "Python syntax: factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/src/factorial_pkg/factorial.py'"
+    },
+    {
+      "test": "Python syntax: test_factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/tests/test_factorial.py'"
+    }
+  ]
+}

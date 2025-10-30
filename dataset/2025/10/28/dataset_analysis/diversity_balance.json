@@ -1,0 +1,46 @@
+{
+  "generated_at": "2025-10-28T19:28:25.796964Z",
+  "target_total_real": 85,
+  "quota_per_category": {
+    "unknown:other:neutral": 82,
+    "outdoor:other:neutral": 1,
+    "unknown:talking_head:neutral": 2
+  },
+  "selected_counts": {
+    "unknown:other:neutral": 82,
+    "outdoor:other:neutral": 1,
+    "unknown:talking_head:neutral": 2
+  },
+  "axis_overrepresented": {
+    "environment": [
+      "unknown"
+    ],
+    "shot_type": [
+      "other"
+    ],
+    "lighting": [
+      "neutral"
+    ],
+    "quality": [
+      "mq"
+    ]
+  },
+  "axis_underrepresented": {
+    "environment": [
+      "outdoor",
+      "indoor"
+    ],
+    "shot_type": [
+      "interview",
+      "selfie"
+    ],
+    "lighting": [
+      "low",
+      "bright"
+    ],
+    "quality": [
+      "lq",
+      "hq"
+    ]
+  }
+}

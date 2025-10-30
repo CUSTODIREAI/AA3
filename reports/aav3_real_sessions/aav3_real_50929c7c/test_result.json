@@ -1,0 +1,97 @@
+{
+  "test_plan": {
+    "implementation": "Added a small, typed Python package implementing an iterative factorial with strict input validation, doctest examples, and a pytest suite. The function rejects bools and non-integral numerics, accepts int-like objects via __index__, and raises ValueError for negatives. Included a src/ layout, pyproject.toml for packaging and pytest config, and a README with usage and test instructions. The module can run its doctests via __main__.",
+    "files_to_create": [
+      {
+        "path": "src/custodire_factorial/factorial.py",
+        "content": "'''Iterative factorial with strict input validation.\n\nThis function computes n! for non-negative integers using a simple loop,\nwith explicit checks to mirror common expectations:\n- Accepts integers and int-like objects (via __index__).\n- Rejects bool explicitly to avoid surprising behavior.\n- Rejects non-integral numerics (e.g., float, Decimal, Fraction) with TypeError.\n- Raises ValueError for negative inputs.\n\nExamples\n--------\n>>> factorial(0)\n1\n>>> factorial(5)\n120\n>>> factorial(1)\n1\n>>> factorial(10)\n3628800\n>>> factorial(5.0)  # doctest: +ELLIPSIS\nTraceback (most recent call last):\n...\nTypeError: factorial() argument must be an integer, not float\n>>> factorial(-1)  # doctest: +ELLIPSIS\nTraceback (most recent call last):\n...\nValueError: factorial() not defined for negative values\n>>> factorial(True)  # doctest: +ELLIPSIS\nTraceback (most recent call last):\n...\nTypeError: factorial() does not accept bool\n>>> class IntLike:\n...     def __index__(self): return 7\n>>> factorial(IntLike())\n5040\n'''\n\nfrom operator import index as _index\nfrom typing import SupportsIndex\n\n__all__ = ['factorial']\n\ndef factorial(n: SupportsIndex) -> int:\n    '''Compute n! for a non-negative integer with strict validation.\n\n    Parameters\n    ----------\n    n: SupportsIndex\n        A non-negative integer or int-like object implementing __index__.\n\n    Returns\n    -------\n    int\n        The factorial of n.\n\n    Raises\n    ------\n    TypeError\n        If n is not an integer-like value or is a bool.\n    ValueError\n        If n is negative.\n    '''\n    if isinstance(n, bool):\n        raise TypeError('factorial() does not accept bool')\n    try:\n        k = _index(n)\n    except TypeError:\n        raise TypeError(f'factorial() argument must be an integer, not {type(n).__name__}') from None\n    if k < 0:\n        raise ValueError('factorial() not defined for negative values')\n    result = 1\n    for i in range(2, k + 1):\n        result *= i\n    return result\n\nif __name__ == '__main__':\n    import doctest\n    doctest.testmod()\n"
+      },
+      {
+        "path": "src/custodire_factorial/__init__.py",
+        "content": "from .factorial import factorial\n\n__all__ = ['factorial']\n"
+      },
+      {
+        "path": "tests/test_factorial.py",
+        "content": "import math\nimport pytest\n\nfrom custodire_factorial import factorial\n\n\nclass IntLike:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return int(self.value)\n\n\ndef test_small_values():\n    assert factorial(0) == 1\n    assert factorial(1) == 1\n    assert factorial(5) == 120\n    assert factorial(10) == 3628800\n\n\ndef test_matches_math_factorial_up_to_50():\n    for n in range(0, 50):\n        assert factorial(n) == math.factorial(n)\n\n\ndef test_rejects_bool():\n    with pytest.raises(TypeError):\n        factorial(True)\n    with pytest.raises(TypeError):\n        factorial(False)\n\n\ndef test_rejects_float():\n    with pytest.raises(TypeError) as excinfo:\n        factorial(5.0)\n    assert 'integer' in str(excinfo.value)\n\n\ndef test_negative_raises():\n    with pytest.raises(ValueError):\n        factorial(-1)\n\n\ndef test_accepts_index_protocol():\n    seven = IntLike(7)\n    assert factorial(seven) == math.factorial(7)\n"
+      },
+      {
+        "path": "pyproject.toml",
+        "content": "[build-system]\nrequires = ['hatchling>=1.18.0']\nbuild-backend = 'hatchling.build'\n\n[project]\nname = 'custodire-factorial'\nversion = '0.1.0'\ndescription = 'Iterative factorial with strict input validation and doctests.'\nreadme = 'README.md'\nrequires-python = '>=3.10'\nauthors = [{ name = 'Custodire System', email = 'devnull@example.com' }]\nlicense = { text = 'Proprietary' }\nclassifiers = [\n  'Programming Language :: Python :: 3',\n  'Programming Language :: Python :: 3 :: Only',\n  'Programming Language :: Python :: 3.10',\n  'Programming Language :: Python :: 3.11',\n  'Programming Language :: Python :: 3.12',\n  'Typing :: Typed',\n]\n\n[tool.pytest.ini_options]\ntestpaths = ['tests']\npython_files = ['test_*.py']\n"
+      },
+      {
+        "path": "README.md",
+        "content": "# Custodire Factorial\n\nA small, importable factorial implementation with explicit input validation, doctest examples, and a pytest-based unit test suite.\n\nInput rules:\n- Accepts integers and int-like objects implementing __index__.\n- Rejects bool explicitly to avoid surprises.\n- Rejects non-integral numerics like float, Decimal, Fraction.\n- Raises ValueError for negative values.\n\nWhy iterative:\n- Avoids recursion depth issues.\n- Clear and sufficiently fast for typical inputs.\n- Keeps behavior explicit; can swap to math.factorial later if needed.\n\nQuick checks:\n- Doctests: `python -m doctest -v src/custodire_factorial/factorial.py`\n- Unit tests: `pip install -e . && pytest -q`\n\nNotes:\n- Targets Python 3.10+.\n- Very large n will be slow due to big integer arithmetic.\n"
+      }
+    ],
+    "key_decisions": [
+      "Implemented iterative factorial to follow the planner’s design and avoid recursion limits.",
+      "Validated inputs via operator.index to accept int-like objects, while explicitly rejecting bool.",
+      "Raised ValueError for negatives and TypeError for non-integral inputs to mirror math.factorial semantics.",
+      "Used src/ layout with pyproject.toml and pytest for clean packaging and testing.",
+      "Included doctest examples in the function docstring and enabled quick self-check via __main__."
+    ],
+    "status": "complete",
+    "_created_files": [
+      "reports/aav3_real_sessions/aav3_real_50929c7c/workspace/src/custodire_factorial/factorial.py",
+      "reports/aav3_real_sessions/aav3_real_50929c7c/workspace/src/custodire_factorial/__init__.py",
+      "reports/aav3_real_sessions/aav3_real_50929c7c/workspace/tests/test_factorial.py",
+      "reports/aav3_real_sessions/aav3_real_50929c7c/workspace/pyproject.toml",
+      "reports/aav3_real_sessions/aav3_real_50929c7c/workspace/README.md"
+    ]
+  },
+  "executed_tests": [
+    {
+      "test": "File exists: factorial.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_50929c7c/workspace/src/custodire_factorial/factorial.py'"
+    },
+    {
+      "test": "File exists: __init__.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: __init__.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_50929c7c/workspace/src/custodire_factorial/__init__.py'"
+    },
+    {
+      "test": "File exists: test_factorial.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: test_factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_50929c7c/workspace/tests/test_factorial.py'"
+    },
+    {
+      "test": "File exists: pyproject.toml",
+      "result": "pass"
+    },
+    {
+      "test": "File exists: README.md",
+      "result": "pass"
+    }
+  ],
+  "verdict": "needs_fixes",
+  "issues_found": [
+    {
+      "test": "Python syntax: factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_50929c7c/workspace/src/custodire_factorial/factorial.py'"
+    },
+    {
+      "test": "Python syntax: __init__.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_50929c7c/workspace/src/custodire_factorial/__init__.py'"
+    },
+    {
+      "test": "Python syntax: test_factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_50929c7c/workspace/tests/test_factorial.py'"
+    }
+  ]
+}

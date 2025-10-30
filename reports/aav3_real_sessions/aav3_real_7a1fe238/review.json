@@ -1,0 +1,31 @@
+{
+  "implementation": "Implemented a small Python package using a modern src layout that provides an iterative factorial function with strict input validation, rich doctest examples, and a unittest suite covering success and error paths. The function rejects non-integers (including bools and integer-like floats) with TypeError and negatives with ValueError. Doctests live in the function docstring, and a __main__ entry allows running doctests or computing a single value from the CLI.",
+  "files_to_create": [
+    {
+      "path": "src/factorial_pkg/__init__.py",
+      "content": "from .factorial import factorial\n\n__all__ = [\"factorial\"]\n"
+    },
+    {
+      "path": "src/factorial_pkg/factorial.py",
+      "content": "from __future__ import annotations\n\n\"\"\"\nFactorial utility with strict input validation.\n\nThis module implements an iterative factorial function that:\n- Accepts only built-in ints (rejects bool explicitly)\n- Raises ValueError for negative inputs\n- Provides doctest examples for typical and error cases\n\nExamples\n--------\n>>> factorial(0)\n1\n>>> factorial(1)\n1\n>>> factorial(5)\n120\n>>> factorial(10)\n3628800\n\nError cases\n-----------\n>>> factorial(-1)\nTraceback (most recent call last):\n...\nValueError: n must be a non-negative integer\n>>> factorial(5.0)\nTraceback (most recent call last):\n...\nTypeError: n must be of type int (bool not allowed)\n>>> factorial(True)\nTraceback (most recent call last):\n...\nTypeError: n must be of type int (bool not allowed)\n\"\"\"\n\nfrom typing import Any\n\n\ndef factorial(n: int) -> int:\n    \"\"\"Compute n! iteratively with strict validation.\n\n    Parameters\n    ----------\n    n : int\n        Non-negative integer for which to compute the factorial.\n\n    Returns\n    -------\n    int\n        The factorial of ``n``.\n\n    Raises\n    ------\n    TypeError\n        If ``n`` is not a built-in int or is a bool.\n    ValueError\n        If ``n`` is negative.\n    \"\"\"\n    # Reject bool explicitly (since bool is a subclass of int)\n    if isinstance(n, bool) or not isinstance(n, int):\n        raise TypeError(\"n must be of type int (bool not allowed)\")\n    if n < 0:\n        raise ValueError(\"n must be a non-negative integer\")\n\n    result = 1\n    # Iterative multiplication avoids recursion depth limits\n    for i in range(2, n + 1):\n        result *= i\n    return result\n\n\ndef _main() -> None:\n    import argparse\n    import doctest\n    import sys\n\n    parser = argparse.ArgumentParser(\n        description=(\n            \"Factorial utility. Without arguments, runs doctests. \"\n            \"Provide --n to compute n!\"\n        )\n    )\n    parser.add_argument(\"--n\", type=int, help=\"Compute factorial of n\")\n    parser.add_argument(\n        \"--doctest\",\n        action=\"store_true\",\n        help=\"Run doctests (default when no --n is provided)\",\n    )\n    args = parser.parse_args()\n\n    if args.doctest or args.n is None:\n        failures, _ = doctest.testmod()\n        if failures:\n            sys.exit(1)\n        if args.n is None:\n            return\n\n    # If --n is present, compute and print result\n    print(factorial(args.n))\n\n\nif __name__ == \"__main__\":\n    _main()\n"
+    },
+    {
+      "path": "tests/test_factorial.py",
+      "content": "import sys\nfrom pathlib import Path\nimport unittest\n\n# Ensure 'src' is on sys.path for src-layout imports without installation\nROOT = Path(__file__).resolve().parents[1]\nsys.path.insert(0, str(ROOT / \"src\"))\n\nfrom factorial_pkg.factorial import factorial  # noqa: E402\n\n\nclass TestFactorial(unittest.TestCase):\n    def test_zero_and_one(self):\n        self.assertEqual(factorial(0), 1)\n        self.assertEqual(factorial(1), 1)\n\n    def test_typical_values(self):\n        self.assertEqual(factorial(5), 120)\n        self.assertEqual(factorial(10), 3628800)\n\n    def test_compares_with_math_for_small_n(self):\n        import math\n\n        for n in (2, 3, 7, 12, 20):\n            self.assertEqual(factorial(n), math.factorial(n))\n\n    def test_negative_raises_value_error(self):\n        with self.assertRaises(ValueError):\n            factorial(-1)\n        with self.assertRaises(ValueError):\n            factorial(-10)\n\n    def test_non_integer_raises_type_error(self):\n        with self.assertRaises(TypeError):\n            factorial(5.0)  # integer-like float\n        with self.assertRaises(TypeError):\n            factorial(3.14)\n        with self.assertRaises(TypeError):\n            factorial(\"5\")  # type: ignore[arg-type]\n\n    def test_bool_rejected(self):\n        with self.assertRaises(TypeError):\n            factorial(True)  # type: ignore[arg-type]\n        with self.assertRaises(TypeError):\n            factorial(False)  # type: ignore[arg-type]\n\n\nif __name__ == \"__main__\":\n    unittest.main(verbosity=2)\n"
+    }
+  ],
+  "key_decisions": [
+    "Use src layout (src/factorial_pkg) for clean imports and modern structure.",
+    "Implement iterative factorial per the plan (avoid recursion depth issues).",
+    "Strictly accept built-in int; explicitly reject bool and all non-ints to avoid surprises.",
+    "Raise ValueError for negatives; TypeError for non-integers, matching doctest and tests.",
+    "Provide doctests in the function docstring and a __main__ to run them by default, or compute n! when --n is supplied.",
+    "Use unittest with a sys.path bootstrap so tests run without installing the package."
+  ],
+  "status": "complete",
+  "_created_files": [
+    "reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/src/factorial_pkg/__init__.py",
+    "reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/src/factorial_pkg/factorial.py",
+    "reports/aav3_real_sessions/aav3_real_7a1fe238/workspace/tests/test_factorial.py"
+  ]
+}

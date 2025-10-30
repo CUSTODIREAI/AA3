@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  dfl:
+    image: ${IMAGE_TAG_DFL:-dfl:tf2.12.1}
+    container_name: dfl
+    ipc: host
+    shm_size: 8g
+    environment:
+      - TF_FORCE_GPU_ALLOW_GROWTH=true
+      - TF_GPU_ALLOCATOR=cuda_malloc_async
+      - NVIDIA_TF32_OVERRIDE=0
+      - XDG_CACHE_HOME=/workspace/.cache
+      - TORCH_HOME=/workspace/.cache/torch
+    volumes:
+      - ./workspace:/workspace
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    command: ["--help"]

@@ -77,9 +77,10 @@ def extract_json_from_codex_output(output: str) -> dict:
                 json_text = '\n'.join(json_lines)
                 try:
                     parsed = json.loads(json_text)
-                    # Prioritize JSONs with required fields
-                    has_plan_id = 'plan_id' in parsed or 'approved' in parsed
-                    score = len(json_text) + (1000 if has_plan_id else 0)
+                    # Prioritize JSONs with required fields (plan, review, or decision structures)
+                    has_key_field = 'plan_id' in parsed or 'approved' in parsed or 'decision' in parsed
+                    # Give higher score to longer JSONs with key fields
+                    score = len(json_text) + (1000 if has_key_field else 0)
                     candidates.append((score, parsed, json_text))
                     break
                 except json.JSONDecodeError:
@@ -92,8 +93,8 @@ def extract_json_from_codex_output(output: str) -> dict:
 
     # Last resort: try to extract any JSON-like structure
     import re
-    # Look for JSON with "plan_id" or "approved" fields
-    pattern = r'\{[^{}]*?"(?:plan_id|approved)"[^{}]*?\}'
+    # Look for JSON with key fields (plan_id, approved, or decision)
+    pattern = r'\{[^{}]*?"(?:plan_id|approved|decision)"[^{}]*?\}'
     for match in re.finditer(pattern, output, re.DOTALL):
         # Try to expand to full object by counting braces
         start = match.start()
@@ -114,6 +115,27 @@ def extract_json_from_codex_output(output: str) -> dict:
         except:
             continue
 
+    # Final fallback: try to find ANY valid JSON object in the output
+    # This catches cases where JSON is embedded in text
+    for i in range(len(output)):
+        if output[i] == '{':
+            brace_count = 0
+            for j in range(i, len(output)):
+                if output[j] == '{':
+                    brace_count += 1
+                elif output[j] == '}':
+                    brace_count -= 1
+                if brace_count == 0:
+                    try:
+                        candidate = output[i:j+1]
+                        parsed = json.loads(candidate)
+                        # Accept any valid JSON object
+                        if isinstance(parsed, dict) and len(parsed) > 0:
+                            return parsed
+                    except:
+                        continue
+                    break
+
     # Save full output for debugging
     debug_file = Path('debug_codex_output.txt')
     debug_file.write_text(output, encoding='utf-8')
@@ -122,39 +144,35 @@ def extract_json_from_codex_output(output: str) -> dict:
 
 
 # ---- Codex CLI invocation ----
-def call_codex_cli(prompt: str, timeout: int = 180) -> str:
-    """Call Codex CLI and return raw output"""
+def call_codex_cli(prompt: str, timeout: int = 300) -> str:
+    """Call Codex CLI and return raw output
 
+    Uses stdin pipe for simplicity and reliability.
+    """
     # Check if we're in WSL or Windows
     in_wsl = os.path.exists('/proc/version')
 
     if in_wsl:
-        # Direct codex call in WSL
-        cmd = ['codex', 'exec', '--skip-git-repo-check', prompt]
+        # Direct codex call in WSL with stdin
+        cmd = ['codex', 'exec', '--skip-git-repo-check', '-']
         proc = subprocess.run(
             cmd,
+            input=prompt,
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout,
+            cwd=Path.cwd()
         )
     else:
-        # Call via WSL from Windows
-        # Use a file to pass the prompt to avoid quoting issues
-        prompt_file = Path('temp_prompt.txt')
-        prompt_file.write_text(prompt, encoding='utf-8')
-
-        cmd = f'wsl bash -c "cd /mnt/x/data_from_helper/custodire-aa-system && codex exec --skip-git-repo-check \\"$(cat temp_prompt.txt)\\""'
+        # Call via WSL from Windows with stdin
+        cmd = ['wsl', 'bash', '-c', 'cd /mnt/x/data_from_helper/custodire-aa-system && codex exec --skip-git-repo-check -']
         proc = subprocess.run(
             cmd,
+            input=prompt,
             capture_output=True,
             text=True,
-            shell=True,
             timeout=timeout
         )
-
-        # Cleanup
-        if prompt_file.exists():
-            prompt_file.unlink()
 
     if proc.returncode != 0:
         raise RuntimeError(f"Codex CLI failed:\nSTDERR: {proc.stderr}\nSTDOUT: {proc.stdout}")
@@ -162,8 +180,47 @@ def call_codex_cli(prompt: str, timeout: int = 180) -> str:
     return proc.stdout
 
 
+# ---- Plan linter for passthrough adoption ----
+def lint_plan_for_passthrough(plan: dict, task_text: str) -> tuple[bool, list[str]]:
+    """
+    Check if plan uses passthrough appropriately for task requirements.
+
+    Returns:
+        (is_valid, [rejection_reasons])
+    """
+    issues = []
+    actions = plan.get('actions', [])
+    action_types = [a.get('type') for a in actions]
+
+    # Count action types
+    fs_write_count = action_types.count('fs.write')
+    passthrough_count = action_types.count('agent.passthrough_shell')
+
+    text_lower = task_text.lower()
+
+    # Check web/versions requirement
+    if re.search(r'\b(web|latest|version|current|fetch)\b', text_lower):
+        if passthrough_count == 0:
+            issues.append("Task requires web lookups for latest versions, but plan has zero agent.passthrough_shell actions. Must use curl/wget to fetch current data.")
+
+    # Check docker/build requirement
+    if re.search(r'\b(docker|build|image)\b', text_lower):
+        # Check if writing build scripts without executing
+        build_scripts = [a for a in actions if a.get('type') == 'fs.write' and 'docker build' in str(a.get('params', {}).get('content', ''))]
+        if build_scripts and passthrough_count == 0:
+            issues.append("Task requires docker builds, but plan only writes build scripts without executing them. Must use agent.passthrough_shell to run docker build.")
+
+    # Check GPU/test requirement
+    if re.search(r'\b(gpu|cuda|test|verify)\b', text_lower):
+        test_scripts = [a for a in actions if a.get('type') == 'fs.write' and any(kw in str(a.get('params', {})) for kw in ['nvidia-smi', 'GPU', 'cuda'])]
+        if test_scripts and passthrough_count == 0:
+            issues.append("Task requires GPU testing, but plan only writes test scripts without executing them. Must use agent.passthrough_shell to run tests.")
+
+    return (len(issues) == 0, issues)
+
+
 # ---- Agent implementations ----
-def call_proposer(task_brief: str, history: list[dict]) -> dict:
+def call_proposer(task_brief: str, history: list[dict], tools_context: str = None) -> dict:
     """
     Proposer agent: Creates initial plan or refines based on critic feedback.
 
@@ -184,36 +241,24 @@ def call_proposer(task_brief: str, history: list[dict]) -> dict:
         else:
             history_text = "No critique found in history."
 
-    prompt = f"""You are a Proposer agent creating a plan for dataset curation.
+    # Build system prompt - SIMPLIFIED to avoid timeout
+    tools_section = tools_context if tools_context else "Tools: fs.write, agent.passthrough_shell, ingest.promote"
 
-TASK:
-{task_brief}
+    prompt = f"""Create a plan (JSON only, no markdown).
 
-HISTORY:
-{history_text}
+Task: {task_brief[:300]}
 
-PHASE: {phase}
+History: {history_text[:200]}
 
-OUTPUT REQUIREMENTS:
-Return ONLY valid JSON (no markdown, no explanations) with this structure:
-{{
-  "plan_id": "unique-id-string",
-  "reasoning": "Brief explanation of approach",
-  "actions": [
-    {{"id": "A1", "type": "fs.write", "params": {{"path": "...", "content": "..."}}}},
-    {{"id": "A2", "type": "ingest.promote", "items": [{{"src": "...", "relative_dst": "...", "tags": {{...}}}}]}}
-  ]
-}}
-
-Available tools: fs.write, fs.append, fs.move, git.clone, download.ytdlp, container.run, exec.container_cmd, ingest.promote
+Format:
+{{"plan_id": "unique-id", "actions": [{{"id": "A1", "type": "...", "params": {{...}}}}]}}
 
 Rules:
-- Files must be created in staging/ or workspace/ first
-- Use ingest.promote to move to dataset/ (append-only)
-- Include tags in promotion items
-- plan_id must be unique
+- Files in staging/ or workspace/ only
+- Use agent.passthrough_shell for web/docker/GPU commands (execute, don't just write scripts)
+- End with ingest.promote (include tags)
 
-Output JSON now:"""
+JSON:"""
 
     # Call Codex
     output = call_codex_cli(prompt)
@@ -228,46 +273,42 @@ Output JSON now:"""
     return plan
 
 
-def call_critic(proposal: dict, history: list[dict]) -> dict:
+def call_critic(proposal: dict, history: list[dict], tools_context: str = None, task_text: str = None) -> dict:
     """
     Critic agent: Reviews proposal and approves or requests changes.
 
-    Uses Codex CLI.
+    Uses Codex CLI with plan linter and enforcement rules.
     """
-    history_summary = f"This is critique turn {len([h for h in history if h.get('phase') == 'critique']) + 1}"
+    # Apply linter BEFORE calling critic to catch write-only anti-patterns
+    is_valid, lint_issues = lint_plan_for_passthrough(proposal, task_text or "")
+    if not is_valid:
+        # Auto-reject without calling critic
+        return {
+            "approved": False,
+            "reasons": lint_issues,
+            "plan": proposal
+        }
 
-    prompt = f"""You are a CRITIC reviewing a plan. DO NOT create a new plan - only review the existing one.
+    # Task context (limited to 200 chars to avoid bloat)
+    task_context = task_text[:200] if task_text else ""
 
-PLAN TO REVIEW:
-{json.dumps(proposal, indent=2)}
+    # SIMPLIFIED prompt to avoid timeout
+    prompt = f"""Review this plan (return JSON only).
 
-REVIEW CRITERIA:
-1. Files created in staging/ or workspace/
-2. Plan ends with ingest.promote
-3. Tags present in promotion items
-4. No privileged docker
-5. Actions will work correctly
+Task: {task_context}
 
-YOUR OUTPUT MUST BE A REVIEW, NOT A PLAN.
+Plan:
+{json.dumps(proposal, indent=2)[:1500]}
 
-Required JSON format (REVIEW structure, not plan structure):
-{{
-  "approved": true,
-  "reasons": ["Meets all criteria", "Files in staging/", "Has ingest.promote with tags"],
-  "plan": <copy the entire proposal here without changes if approved>
-}}
+Check:
+1. Files in staging/ or workspace/
+2. Ends with ingest.promote (with tags)
+3. If task needs web/docker/GPU: must use agent.passthrough_shell (not just write scripts)
 
-OR if changes needed:
-{{
-  "approved": false,
-  "reasons": ["Missing X", "Problem with Y"],
-  "required_changes": ["Add X", "Fix Y"],
-  "plan": <edited version of proposal>
-}}
+Format:
+{{"approved": true/false, "reasons": [...], "plan": <proposal>}}
 
-DO NOT return a plan with "plan_id" and "actions" - return a REVIEW with "approved" and "reasons".
-
-Output review JSON now:"""
+JSON:"""
 
     # Call Codex
     output = call_codex_cli(prompt)

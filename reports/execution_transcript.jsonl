@@ -1,0 +1,4 @@
+{"timestamp": "2025-10-29T08:48:20Z", "phase": "execute", "action_id": "A1", "action_type": "fs.write", "result_ok": true, "quality": "good", "issues": []}
+{"timestamp": "2025-10-29T08:48:20Z", "phase": "execute", "action_id": "A2", "action_type": "exec.container_cmd", "result_ok": true, "quality": "suspicious", "issues": ["Unusually short output from script execution"]}
+{"timestamp": "2025-10-29T08:48:20Z", "phase": "quality_issue", "action_id": "A2", "issues": ["Unusually short output from script execution"], "triggering_deliberation": true}
+{"timestamp": "2025-10-29T08:57:29Z", "phase": "deliberation_failed", "action_id": "A2"}

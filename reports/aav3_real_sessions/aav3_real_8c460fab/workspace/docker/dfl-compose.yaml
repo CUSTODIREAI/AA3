@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  dfl:
+    image: custudire/dfl:dfl-cuda11.8-tf2.13.1
+    # Use 'device_requests' for broad compatibility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # For non-Swarm Compose v2, the shorthand also works:
+    # gpus: all
+    environment:
+      - TF_FORCE_GPU_ALLOW_GROWTH=true
+      - TF_GPU_ALLOCATOR=cuda_malloc_async
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    working_dir: /workspace
+    volumes:
+      - ../workspace:/workspace
+    entrypoint: ["/usr/local/bin/dfl"]
+    command: ["help"]

@@ -1,0 +1,21 @@
+{
+  "approach": "Implement an iterative, type-safe factorial with clear docstring examples and minimal unit tests; validate inputs, raise ValueError for negatives, and include doctests for quick verification.",
+  "steps": [
+    "Define function signature factorial(n: int) -> int",
+    "Validate input type and value (int and n >= 0)",
+    "Implement iterative multiplication over range(2, n+1)",
+    "Add docstring with examples incl. errors (doctest-ready)",
+    "Add doctest runner via if __name__ == '__main__'",
+    "Create tests/test_factorial.py with basic unit tests",
+    "Run doctests and unit tests to verify behavior",
+    "Provide brief usage and test run instructions"
+  ],
+  "unknowns": [
+    "Should non-integer numerics (e.g., 5.0) be accepted or strictly require int?",
+    "Should bools be rejected explicitly (since bool is a subclass of int)?",
+    "Is a CLI interface desired (e.g., read n from argv) or module-only?",
+    "Preferred test framework: unittest vs pytest (defaulting to unittest if unspecified)?",
+    "Any constraints on maximum n or performance expectations (Python big ints are supported)?"
+  ],
+  "rationale": "An iterative implementation avoids recursion depth limits and is easy to reason about. Strict validation produces predictable errors for invalid inputs. Doctest examples document usage and double as quick tests, while a small unit test file provides basic coverage for typical and edge cases. This keeps the solution simple, maintainable, and aligned with the requirements."
+}

@@ -1,0 +1,23 @@
+{
+  "approach": "Implement an iterative factorial function with input validation, rich docstring examples (doctest), and a small unittest suite to cover success and error paths.",
+  "steps": [
+    "Create factorial.py module",
+    "Implement factorial(n: int) iterative",
+    "Validate type and sign of n",
+    "Raise ValueError for negatives",
+    "Raise TypeError for non-integers",
+    "Add docstring with doctest examples",
+    "Add basic unittest TestCase",
+    "Include __main__ to run tests/doctest"
+  ],
+  "unknowns": [
+    "Preferred file name/location (e.g., factorial.py vs src/).",
+    "Target Python version (for typing/style nuances).",
+    "Should bool be accepted (bool is int) or rejected explicitly?",
+    "Should integer-like floats (e.g., 5.0) be allowed or rejected?",
+    "Any performance constraints or upper bounds for n?",
+    "Preferred test framework (unittest vs pytest) and how tests are run.",
+    "Do we need a CLI entry point (reading from stdin/args) or just library + tests?"
+  ],
+  "rationale": "An iterative implementation avoids recursion depth issues and is straightforward to reason about. Explicit validation and tailored exceptions meet the error-handling requirement clearly. Doctest examples serve as executable documentation while keeping usage clear. A minimal unittest suite provides quick verification of edge cases (0, 1), typical values (5, 10), and error paths (negative, non-integer), ensuring correctness without overengineering."
+}

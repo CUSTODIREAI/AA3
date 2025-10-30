@@ -1,0 +1,15 @@
+# Constraints to keep the environment stable
+# TensorFlow 2.12 supports protobuf >=3.20.3,<5.0.0; pin within this range
+protobuf==4.23.4
+keras<3
+numpy==1.26.4
+scipy==1.11.4
+numexpr==2.8.6
+h5py==3.10.0
+scikit-image==0.21.0
+opencv-python-headless==4.8.1.78
+pillow==10.1.0
+tensorflow-io-gcs-filesystem==0.32.0
+# Torch is optional for S3FD; only install if INSTALL_TORCH=1 (see Dockerfile)
+# torch==2.0.1+cu118
+# torchvision==0.15.2+cu118

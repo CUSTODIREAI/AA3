@@ -1,0 +1,41 @@
+{
+  "test_plan": {
+    "implementation": "Create a correct Python module `factorial.py` that fixes the missing file error and provides a robust, strictly validated factorial implementation. It accepts integer-like inputs via the __index__ protocol, explicitly rejects bool, raises ValueError for negatives, and computes iteratively to avoid recursion depth issues. The module includes doctest examples and a __main__ self-check to validate behavior.",
+    "files_to_create": [
+      {
+        "path": "factorial.py",
+        "content": "'''Reliable factorial implementation with strict validation.\n\n- Accepts integer-like types via the __index__ protocol (e.g., numpy.int64).\n- Explicitly rejects bool (even though it's a subclass of int) for clarity.\n- Raises ValueError for negative values.\n- Iterative computation avoids recursion limits and stack overhead.\n\nExamples\n--------\n>>> factorial(0)\n1\n>>> factorial(5)\n120\n>>> factorial(True)  # doctest: +IGNORE_EXCEPTION_DETAIL\nTraceback (most recent call last):\nTypeError: ...\n>>> factorial(-3)  # doctest: +IGNORE_EXCEPTION_DETAIL\nTraceback (most recent call last):\nValueError: ...\n>>> factorial(5.0)  # doctest: +IGNORE_EXCEPTION_DETAIL\nTraceback (most recent call last):\nTypeError: ...\n'''\nfrom __future__ import annotations\n\nimport operator as _op\nfrom typing import SupportsIndex\n\n__all__ = [\"factorial\"]\n\n\ndef factorial(n: SupportsIndex) -> int:\n    \"\"\"Compute n! for a non-negative, integer-like input.\n\n    - Accepts integer-like types via ``__index__``.\n    - Rejects ``bool`` inputs explicitly with ``TypeError``.\n    - Raises ``ValueError`` for negative integers.\n\n    Parameters\n    ----------\n    n : SupportsIndex\n        Non-negative integer-like value.\n\n    Returns\n    -------\n    int\n        The factorial of ``n``.\n    \"\"\"\n    if isinstance(n, bool):\n        # Explicitly reject bool for clarity and to avoid surprising behavior.\n        raise TypeError(\"factorial() does not accept bool\")\n\n    try:\n        k = _op.index(n)  # Coerce integer-like inputs (e.g., numpy ints)\n    except Exception as exc:  # noqa: BLE001 - bubble as TypeError for clarity\n        raise TypeError(\"factorial() only accepts integer-like values\") from exc\n\n    if k < 0:\n        raise ValueError(\"factorial() not defined for negative values\")\n\n    result = 1\n    # Fast path for small k\n    if k < 2:\n        return 1\n\n    # Iterative multiplication to avoid recursion limits and overhead\n    for i in range(2, k + 1):\n        result *= i\n    return result\n\n\nif __name__ == \"__main__\":\n    import doctest\n    import math\n\n    # Run doctests embedded in the module docstring\n    doctest.testmod()\n\n    # Sanity checks against math.factorial for a quick range\n    for i in range(0, 21):\n        assert factorial(i) == math.factorial(i)\n\n    print(\"factorial.py: self-checks passed.\")\n"
+      }
+    ],
+    "key_decisions": [
+      "Use operator.index to accept integer-like inputs and raise TypeError for non-indexable types.",
+      "Explicitly reject bool inputs to avoid surprising behavior (raise TypeError).",
+      "Raise ValueError for negative values, matching common library semantics.",
+      "Compute iteratively to avoid recursion limits and reduce overhead.",
+      "Include doctest examples and a __main__ block with quick sanity checks."
+    ],
+    "status": "complete",
+    "_created_files": [
+      "reports/aav3_real_sessions/aav3_real_b90f8375/workspace/factorial.py"
+    ]
+  },
+  "executed_tests": [
+    {
+      "test": "File exists: factorial.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_b90f8375/workspace/factorial.py'"
+    }
+  ],
+  "verdict": "needs_fixes",
+  "issues_found": [
+    {
+      "test": "Python syntax: factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_b90f8375/workspace/factorial.py'"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+# Ignore everything by default; only Docker context files are needed
+**
+!docker/**
+!.gitignore
+!.gitattributes

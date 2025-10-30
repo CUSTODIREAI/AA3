@@ -1,4 +1,5 @@
 # Multi-Agent Deliberation settings
+mode: "deliberate"  # Options: "deliberate" (plan→approve→execute) | "direct" (execute immediately, no planning)
 max_turns: 5
 transcript_path: "reports/conversation.jsonl"
 proposer_id: "claude-code"   # Agent A

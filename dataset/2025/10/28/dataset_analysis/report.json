@@ -1,0 +1,176 @@
+{
+  "generated_at": "2025-10-28T19:28:25.796964Z",
+  "dataset_roots": [
+    "X:\\\\dataset_3",
+    "X:\\\\dataset2",
+    "X:\\\\DEEPFAKE_DATASETS"
+  ],
+  "total_videos": 41192,
+  "total_real": 85,
+  "total_fake": 10475,
+  "suitable_real_count": 0,
+  "by_dataset": {
+    "dataset_3": {
+      "total": 8450,
+      "labels": {
+        "unknown": 8424,
+        "real": 19,
+        "fake": 7
+      },
+      "environment": {
+        "unknown": 8388,
+        "outdoor": 37,
+        "indoor": 25
+      },
+      "shot_type": {
+        "other": 8329,
+        "talking_head": 85,
+        "interview": 35,
+        "selfie": 1
+      },
+      "lighting": {
+        "neutral": 8431,
+        "low": 17,
+        "bright": 2
+      },
+      "quality": {
+        "mq": 8448,
+        "lq": 1,
+        "hq": 1
+      }
+    },
+    "dataset2": {
+      "total": 19681,
+      "labels": {
+        "unknown": 19520,
+        "fake": 95,
+        "real": 66
+      },
+      "environment": {
+        "unknown": 19405,
+        "outdoor": 197,
+        "indoor": 79
+      },
+      "shot_type": {
+        "other": 12141,
+        "interview": 234,
+        "talking_head": 7293,
+        "selfie": 13
+      },
+      "lighting": {
+        "neutral": 19482,
+        "low": 197,
+        "bright": 2
+      },
+      "quality": {
+        "mq": 19681
+      }
+    },
+    "DEEPFAKE_DATASETS": {
+      "total": 13061,
+      "labels": {
+        "fake": 10373,
+        "unknown": 2688
+      },
+      "environment": {
+        "unknown": 12987,
+        "outdoor": 74
+      },
+      "shot_type": {
+        "other": 13061
+      },
+      "lighting": {
+        "neutral": 13061
+      },
+      "quality": {
+        "mq": 13060,
+        "hq": 1
+      }
+    }
+  },
+  "axes": {
+    "environment": {
+      "counts": {
+        "unknown": 40780,
+        "outdoor": 308,
+        "indoor": 104
+      },
+      "distribution": {
+        "unknown": 0.9899980578753156,
+        "outdoor": 0.007477180034958245,
+        "indoor": 0.0025247620897261604
+      },
+      "overrepresented": [
+        "unknown"
+      ],
+      "underrepresented": [
+        "outdoor",
+        "indoor"
+      ]
+    },
+    "shot_type": {
+      "counts": {
+        "other": 33531,
+        "talking_head": 7378,
+        "interview": 269,
+        "selfie": 14
+      },
+      "distribution": {
+        "other": 0.8140172849096912,
+        "talking_head": 0.17911244901922704,
+        "interview": 0.006530394251310934,
+        "selfie": 0.0003398718197708293
+      },
+      "overrepresented": [
+        "other"
+      ],
+      "underrepresented": [
+        "interview",
+        "selfie"
+      ]
+    },
+    "lighting": {
+      "counts": {
+        "neutral": 40974,
+        "low": 214,
+        "bright": 4
+      },
+      "distribution": {
+        "neutral": 0.994707710234997,
+        "low": 0.005195183530782676,
+        "bright": 9.710623422023694e-05
+      },
+      "overrepresented": [
+        "neutral"
+      ],
+      "underrepresented": [
+        "low",
+        "bright"
+      ]
+    },
+    "quality": {
+      "counts": {
+        "mq": 41189,
+        "lq": 1,
+        "hq": 2
+      },
+      "distribution": {
+        "mq": 0.9999271703243349,
+        "lq": 2.4276558555059236e-05,
+        "hq": 4.855311711011847e-05
+      },
+      "overrepresented": [
+        "mq"
+      ],
+      "underrepresented": [
+        "lq",
+        "hq"
+      ]
+    }
+  },
+  "composite_counts_real": {
+    "unknown:other:neutral": 82,
+    "outdoor:other:neutral": 1,
+    "unknown:talking_head:neutral": 2
+  }
+}

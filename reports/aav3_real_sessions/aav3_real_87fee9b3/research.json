@@ -1,0 +1,28 @@
+{
+  "findings": [
+    "Python 3.8+ is acceptable, but Python 3.8 reached end-of-life in Oct 2024; prefer 3.10+ (3.11/3.12 for performance) for ongoing security and speed.",
+    "math.factorial raises ValueError for negatives and TypeError for non-integral inputs; bool is a subclass of int, so guard against booleans if undesired.",
+    "Integers in Python are arbitrary-precision; factorial grows extremely fast, so memory/time costs explode for large n; use math.factorial (C-optimized) over pure Python for performance.",
+    "Implement factorial iteratively (not recursively) to avoid recursion limits and overhead; validate n as an integer and reject floats/decimals/strings.",
+    "For type checks, prefer numbers.Integral but explicitly exclude bool to avoid True/False being treated as 1/0.",
+    "No hard upper bound is specified by Python; practical limits depend on available RAM and time; document that very large n may be slow/consume significant memory.",
+    "Testing: pytest is the community-preferred framework for concise tests and better UX; use unittest only if zero-dependency policy is required.",
+    "Test verbosity: run pytest with -q/-v/-vv as needed; for unittest, use python -m unittest -v and standard discovery (files named test*.py).",
+    "Module naming: follow PEP 8 — lowercase with underscores for modules and packages (e.g., factorial.py).",
+    "Repo layout: prefer the src/ layout for packages (src/<package>/factorial.py) with tests in tests/ (tests/test_factorial.py) per packaging best practices.",
+    "Doctest is good for illustrative examples in the docstring; keep comprehensive checks in the unit test suite."
+  ],
+  "sources": [
+    "https://devguide.python.org/versions/",
+    "https://docs.python.org/3/library/math.html#math.factorial",
+    "https://docs.python.org/3/library/stdtypes.html#boolean-type-bool",
+    "https://docs.python.org/3/library/stdtypes.html#typesnumeric",
+    "https://peps.python.org/pep-0008/#package-and-module-names",
+    "https://packaging.python.org/en/latest/discussions/src-layout/",
+    "https://docs.pytest.org/en/stable/",
+    "https://docs.python.org/3/library/unittest.html",
+    "https://docs.python.org/3/library/doctest.html"
+  ],
+  "recommendation": "Target Python 3.11+ if possible (3.10+ minimum), implement an iterative factorial that validates input as an int while explicitly rejecting bool, and delegate to math.factorial internally for performance and correctness. Do not coerce non-integers; raise TypeError, and raise ValueError for negatives to mirror math.factorial. Avoid setting a hard upper bound but document potential performance/memory costs for very large n. Use pytest for the main test suite with tests in tests/test_factorial.py under a src/ package layout; include minimal doctest examples in the function docstring. If a no-dependency policy applies, replace pytest with unittest using standard discovery and -v verbosity.",
+  "confidence": "high"
+}

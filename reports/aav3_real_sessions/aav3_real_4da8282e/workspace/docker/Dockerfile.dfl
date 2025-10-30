@@ -1,0 +1,57 @@
+ARG BASE_IMAGE_TAG=cuda11.8-tf2.13-py3.10
+ARG REGISTRY=custodire
+ARG BUILD_DATE
+ARG VCS_REF
+ARG IMAGE_VERSION=0.1.0
+
+FROM ${REGISTRY}/dfl-base:${BASE_IMAGE_TAG}
+
+LABEL org.opencontainers.image.title="Custodire DeepFaceLab (on CUDA 11.8 / TF 2.13)" \
+      org.opencontainers.image.description="DeepFaceLab environment layered on CUDA+TF base. Repo/commit configurable." \
+      org.opencontainers.image.version="${IMAGE_VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.source="https://example.invalid/custodire-aa-system" \
+      org.opencontainers.image.licenses="Proprietary/Project-Specific"
+
+# Build args to choose DFL fork and commit. Default upstream (TF1) for cloning only; recommend overriding to TF2-ready fork.
+ARG DFL_REPO="https://github.com/iperov/DeepFaceLab.git"
+ARG DFL_COMMIT="b7f8249a8b2c0a1f23b8f7bc3e3e8c6f0c28d6b1" # placeholder; override to TF2-capable fork commit
+
+USER root
+
+# Extra Python deps sometimes required by DFL forks; keep minimal and pinned
+RUN python -m pip install \
+      ffmpy==0.3.1 \
+      colour-science==0.4.3 \
+      scikit-learn==1.3.2 \
+      albumentations==1.3.1
+
+# Place DFL under /opt/dfl and keep workspace clean
+RUN mkdir -p /opt/dfl
+WORKDIR /opt/dfl
+
+# Shallow clone and checkout pinned commit
+RUN git clone --filter=blob:none --depth 1 ${DFL_REPO} . && \
+    (git fetch --depth 1 origin ${DFL_COMMIT} || true) && \
+    (git checkout ${DFL_COMMIT} || true)
+
+# Optionally install repo-provided requirements if present
+RUN if [ -f requirements.txt ]; then python -m pip install -r requirements.txt || true; fi && \
+    if [ -f requirements-cuda.txt ]; then python -m pip install -r requirements-cuda.txt || true; fi
+
+# Entrypoint wrapper and workspace skeleton
+COPY dfl/entrypoint.sh /usr/local/bin/dfl-entrypoint
+RUN chmod +x /usr/local/bin/dfl-entrypoint && \
+    mkdir -p /workspace/{data_src,data_dst,model,aligned,output,weights} && \
+    chown -R appuser:appuser /opt/dfl /workspace
+
+USER appuser
+WORKDIR /workspace
+
+ENV DFL_DIR=/opt/dfl \
+    TF_FORCE_GPU_ALLOW_GROWTH=1 \
+    TF_ENABLE_ONEDNN_OPTS=0
+
+ENTRYPOINT ["/usr/local/bin/dfl-entrypoint"]
+CMD ["bash"]

@@ -1,0 +1,33 @@
+{
+  "findings": [
+    "DeepFaceLab upstream (iperov/DeepFaceLab) remains TF 1.x–centric; Linux/TF 2.x support is via community forks (e.g., DFL-Colab, DeepFaceLab_Linux) that backport models to TF 2.x using tf.compat.v1 and disabled eager mode.",
+    "For Ada (RTX 4090), TensorFlow ≥2.12 built against CUDA 11.8 and cuDNN 8.6 is the safest path; TF 2.12.1 and 2.13.1 are broadly used and compatible with Python 3.10.",
+    "TensorFlow 2.12/2.13 Linux pip wheels include GPU support by default (no separate tf-gpu) and are compiled for CUDA 11.8 + cuDNN 8.6.0.x.",
+    "cuDNN: TF 2.12/2.13 link against cuDNN 8.6 (e.g., 8.6.0.163); using other cuDNN 8.x minors can work, but 8.6 is the verified baseline for these wheels.",
+    "Host NVIDIA driver: CUDA 11.8 requires ≥ 520.61.05; recommend 525+ or 535+ for Ada stability and bug fixes.",
+    "Python 3.10 dependency pins that work with TF 2.12/2.13: numpy 1.24–1.26 (e.g., 1.26.4), scipy 1.10–1.11 (e.g., 1.11.4), numexpr 2.8.x, scikit-image 0.21.x; avoid installing standalone keras package (prefer tensorflow.keras) to prevent version mismatches.",
+    "OpenCV: use opencv-python-headless or opencv-contrib-python-headless to avoid libGL conflicts in CUDA images; versions 4.7.0.72 or 4.8.1.78 are stable with Python 3.10.",
+    "DFL TF2 forks typically preserve TF1 graph/session code via tf.compat.v1.disable_eager_execution(); the project does not fully migrate to native TF2 idioms, so TF1-style paths still exist internally but run under TF2 runtime.",
+    "RTX 4090/Ada notes: ensure cuDNN ≥8.6 and CUDA 11.8; disable XLA unless testing, as some users report regressions; mixed precision and TF32 are useful but verify stability per model.",
+    "Recommended TF runtime env vars: TF_FORCE_GPU_ALLOW_GROWTH=true; TF_GPU_ALLOCATOR=cuda_malloc_async; optionally set NVIDIA_TF32_OVERRIDE=0/1 depending on desired TF32 usage.",
+    "Docker/Compose runtime: use --gpus=all, --ipc=host, --shm-size=8g; mount cache directories (~/.cache, ~/.keras, Torch cache) to persist detector/model downloads across runs.",
+    "Detectors (S3FD/MTCNN): model weights auto-download on first use; cache paths typically under ~/.cache (and ~/.cache/torch/hub/checkpoints for PyTorch-based S3FD); set XDG_CACHE_HOME and TORCH_HOME or mount these dirs to reuse across containers.",
+    "Typical Linux CLI flow (DFL TF2 forks): extract with S3FD/MTCNN, train SAEHD/DFL models, then merge; example commands are consistent with upstream main.py subcommands.",
+    "OpenCV contrib may be needed for certain DFL features; prefer opencv-contrib-python-headless at the same version if required.",
+    "If mixing PyTorch-based detectors, install torch/torchvision wheels matching CUDA 11.8 (cu118 index) to avoid ABI conflicts with TF's CUDA runtime."
+  ],
+  "sources": [
+    "https://www.tensorflow.org/install/pip",
+    "https://www.tensorflow.org/install/source#gpu",
+    "https://docs.nvidia.com/cuda/archive/11.8.0/",
+    "https://docs.nvidia.com/deeplearning/cudnn/support-matrix/index.html",
+    "https://github.com/iperov/DeepFaceLab",
+    "https://github.com/chervonij/DFL-Colab",
+    "https://pypi.org/project/opencv-python-headless/",
+    "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/user-guide.html",
+    "https://www.tensorflow.org/guide/gpu",
+    "https://pypi.org/project/opencv-contrib-python-headless/"
+  ],
+  "recommendation": "Use a TF 2.12.1 or 2.13.1 Linux pip-based toolchain (Python 3.10, CUDA 11.8, cuDNN 8.6) with a TF2-enabled DeepFaceLab fork. Pin numpy to 1.26.4, scipy to 1.11.x, and use opencv(-contrib)-python-headless 4.8.1.78 to avoid GL issues. Set TF_FORCE_GPU_ALLOW_GROWTH=true and TF_GPU_ALLOCATOR=cuda_malloc_async; keep XLA disabled unless benchmarking. Ensure host driver ≥ 525. Mount ~/.cache (and TORCH_HOME if using S3FD) to persist detector/model weights. Run DFL via main.py subcommands for extract/train/merge; expect TF1-style compat.v1 code under TF2 runtime rather than a pure TF2 rewrite.",
+  "confidence": "low"
+}

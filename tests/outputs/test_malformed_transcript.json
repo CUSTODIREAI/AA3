@@ -1,0 +1,22 @@
+{
+  "artifact_type": "execution_transcript",
+  "task_file": "tests/fixtures/test_malformed.md",
+  "agent_id": "test_malformed",
+  "commands_executed": [
+    {
+      "command": "echo \"test\"",
+      "exit_code": 0,
+      "stdout": "test\n",
+      "stderr": "",
+      "timestamp": "2025-10-29T21:36:36.735881",
+      "duration_sec": 0.09539055824279785,
+      "success": true
+    }
+  ],
+  "total_commands": 1,
+  "successful_commands": 1,
+  "failed_commands": 0,
+  "total_duration_sec": 0.09539055824279785,
+  "timestamp_start": "2025-10-29T21:36:36.634850",
+  "timestamp_end": "2025-10-29T21:36:36.735908"
+}

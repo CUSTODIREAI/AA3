@@ -1,0 +1,28 @@
+{
+  "findings": [
+    "Project layout: Use the PyPA-recommended 'src' layout for packages: place code in 'src/<package_name>/' and tests in 'tests/'. This avoids import shadowing and aligns with modern packaging practices.",
+    "Module location: For a small utility without packaging, a single 'factorial.py' at repo root is acceptable; if packaging or running tests with proper isolation, prefer 'src/<package_name>/factorial.py'.",
+    "Target Python version: Set minimum to Python 3.10 to use modern typing (e.g., 'int | None'); run CI/tests on 3.10–3.12, and optionally 3.13 if available. Python 3.8 is EOL (Oct 2024); 3.9 EOL Oct 2025; 3.10+ is a safe baseline.",
+    "Type hinting: Use 'def factorial(n: int) -> int'. Avoid accepting 'numbers.Integral' because it includes 'bool'; be explicit with 'int' and reject 'bool'.",
+    "Handling bool: Explicitly reject 'bool' (even though 'bool' is a subclass of 'int') to prevent surprising behavior (e.g., True => 1). Implement check: 'isinstance(n, int) and not isinstance(n, bool)'.",
+    "Handling floats: Reject floats (including integer-like floats such as 5.0) for parity with 'math.factorial' which accepts only integers and raises on non-integers.",
+    "Negative inputs: Raise 'ValueError' for negative integers (consistent with Python's 'math.factorial').",
+    "Implementation choice: Prefer delegating to 'math.factorial' after validation—it’s implemented in C, highly optimized, and handles arbitrarily large results efficiently compared to pure-Python loops.",
+    "Performance/upper bounds: No hard upper bound required. Document that very large 'n' will be CPU- and memory-intensive due to superlinear growth of result size; consider a soft warning/log threshold if needed (e.g., n > 100_000), but leave unbounded by default.",
+    "Test framework: If minimizing dependencies, use 'unittest' (stdlib) and run with 'python -m unittest -v'. If comfortable with a dev dependency, 'pytest' is preferred for concise tests and parametrization; run with 'pytest -q'.",
+    "Doctests: Including doctest examples in the docstring is fine as supplemental checks, but rely on 'unittest' or 'pytest' for primary coverage.",
+    "CLI: Not required for a library utility. If desired, add a minimal 'argparse'-based CLI entry point guarded by '__main__' for manual use; otherwise keep to library + tests."
+  ],
+  "sources": [
+    "https://packaging.python.org/en/latest/discussions/src-layout/",
+    "https://docs.python.org/3/library/math.html#math.factorial",
+    "https://docs.python.org/3/library/stdtypes.html#boolean-values",
+    "https://docs.python.org/3/library/numbers.html#numbers.Integral",
+    "https://devguide.python.org/versions/",
+    "https://docs.python.org/3/library/unittest.html",
+    "https://docs.pytest.org/en/stable/",
+    "https://peps.python.org/pep-0604/"
+  ],
+  "recommendation": "Organize the code with a modern 'src' layout: implement 'src/<package_name>/factorial.py' and tests in 'tests/'. Target Python 3.10+ (test on 3.10–3.12 and optionally 3.13). Implement 'factorial(n: int) -> int' as a thin validator that rejects 'bool', rejects non-ints (including integer-like floats), raises 'ValueError' for negatives, and delegates to 'math.factorial' for performance and correctness. Use 'unittest' for zero extra dependencies and add a few doctest examples in the docstring; if a dev dependency is acceptable, prefer 'pytest' for cleaner tests. Skip a CLI unless explicitly requested; keep it as a library plus tests.",
+  "confidence": "medium"
+}

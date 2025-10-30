@@ -1,0 +1,36 @@
+{
+  "findings": [
+    "Custodire ingest format: append-only promotion from staging/ to dataset/YYYY/MM/DD/, manifest at dataset/.manifests/dataset_manifest.jsonl with fields {ts, src, dst, sha256, bytes, actor, plan_id, tags}. Verified in repo.",
+    "Custodire promotion API: action type ingest.promote accepts items [{src, relative_dst?, tags}], expands to dated path, enforces no overwrite, computes SHA-256, appends manifest. Verified in repo.",
+    "DeepFaceLab upstream (iperov/DeepFaceLab) primarily targets TensorFlow 1.x; no official TF2 + Ada (RTX 4090) release documented. Community forks/notebooks exist for TF2 on CUDA 11.8+. Needs live verification.",
+    "For RTX 4090 (Ada), TensorFlow GPU 2.12–2.15 are the most stable on CUDA 11.8; TF 2.16+ shifts to CUDA 12.x and cuDNN 9 with potential ecosystem regressions. Best-known stable: TF 2.13 or 2.15 on CUDA 11.8.",
+    "CUDA/Driver guidance for RTX 4090: Ada requires R520+ drivers; CUDA 11.8-compatible production drivers are commonly 535/550 series on Linux. CUDA 12.x requires newer (e.g., 525.60.13+).",
+    "cuDNN matching: For TF 2.12–2.15 on CUDA 11.8, use cuDNN 8.6–8.9 (pip wheels bundle cuDNN on Linux). TF 2.16+ pairs with CUDA 12.x and cuDNN 9.x.",
+    "DFL dependency pinning to avoid breakages: numpy <2.0 (e.g., 1.23.5), opencv-python ~4.8.x, scikit-image ~0.22.x; ensure ffmpeg present with NVENC/NVDEC. Needs validation against specific fork.",
+    "CUDA 12.x vs 11.8 for DFL: No clear performance win for classic TF-based DFL; 11.8 remains safer due to TF ecosystem stability. 12.x ties you to TF 2.16+ which may require more patching.",
+    "Recommended Python for DFL: 3.9–3.10 broadly compatible; 3.10 is a balanced choice with TF 2.13–2.15 and common DFL forks.",
+    "Known RTX 4090 + TF issues: mixed_float16 can produce NaNs without loss scaling; enable tf.keras.mixed_precision only if model supports it. Set TF_FORCE_GPU_ALLOW_GROWTH=true; consider disabling XLA in DFL training. Needs live confirmation per fork.",
+    "DFL expected workspace layout (Linux): workspace/data_src, workspace/data_dst, workspace/model; requires ffmpeg in PATH; typical envs include CUDA_VISIBLE_DEVICES and TF_FORCE_GPU_ALLOW_GROWTH=true.",
+    "License-safe smoke test media: Blender Open Movies (Big Buck Bunny, Sintel) short clips or Wikimedia Commons sample MP4s are CC-licensed and suitable for automated tests.",
+    "FFmpeg NVENC/NVDEC: ensure build with --enable-nvenc (h264_nvenc, hevc_nvenc) and CUDA hwaccel; recommended flags include --enable-cuda-llvm and --enable-libnpp; use -hwaccel cuda -hwaccel_output_format cuda.",
+    "Model auto-downloads: Some DFL setups auto-fetch detector/landmark weights on first run; for hermetic builds, pre-populate model weights and block network during training. Needs specific fork confirmation.",
+    "Docker image sizing: Base (nvidia/cuda:11.8-runtime-cudnn8-ubuntu22.04) ~2–2.5GB; TF pip + deps ~0.7–1.0GB; ffmpeg+nvidia ~0.2–0.4GB; DFL code + tools ~0.3–0.6GB. Expect ~5–8GB; multi-stage build and pip --no-cache-dir help."
+  ],
+  "sources": [
+    "docs/DATASET_PROMOTION.md (local repo)",
+    "src/gateway/gateway.py (local repo, manifest schema and SHA capture)",
+    "https://www.tensorflow.org/install/source#gpu (TF GPU support matrix and CUDA/cuDNN pairing)",
+    "https://github.com/tensorflow/tensorflow/releases (TF 2.13–2.16 release notes and GPU packaging notes)",
+    "https://docs.nvidia.com/deploy/cuda-compatibility/ (CUDA driver/runtime compatibility)",
+    "https://docs.nvidia.com/cuda/archive/11.8.0/ (CUDA 11.8 details)",
+    "https://developer.nvidia.com/cuda-gpus (Compute capability list; Ada/SM 8.9)",
+    "https://docs.nvidia.com/deeplearning/cudnn/latest/reference/support-matrix.html (cuDNN support matrix)",
+    "https://github.com/iperov/DeepFaceLab (Upstream DFL repository; TF1 baseline)",
+    "https://github.com/chervonij/DFL-Colab (Community TF2/Colab workflows; confirm TF/CUDA versions)",
+    "https://trac.ffmpeg.org/wiki/HWAccelIntro#NVENCNVDEC (FFmpeg NVENC/NVDEC guidance)",
+    "https://www.blender.org/about/projects/ (Blender Open Movies licensing)",
+    "https://commons.wikimedia.org/wiki/Commons:Video (Wikimedia Commons video samples)"
+  ],
+  "recommendation": "For a stable RTX 4090 build today, target CUDA 11.8 with TensorFlow 2.13 or 2.15 and Python 3.10, and use a maintained DeepFaceLab TF2-compatible fork (upstream DFL remains TF1-focused). Pin numpy<2.0 (e.g., 1.23.5), opencv-python≈4.8.x, scikit-image≈0.22.x, and include ffmpeg with NVENC/NVDEC support. Set TF_FORCE_GPU_ALLOW_GROWTH=true and avoid enabling mixed_float16 unless the fork documents support with proper loss scaling. Keep two Docker images: a lean runtime (~5–6GB) on nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 and a larger devel image (~7–9GB) for builds/tools. For ingest, publish all artifacts via ingest.promote with tags; verify manifest entries include ts, src, dst, sha256, bytes, actor, plan_id, tags. Use CC-licensed Blender Open Movie clips for automated smoke tests. If you want CUDA 12.x, only proceed with TF 2.16+ after confirming the DFL fork’s compatibility and performance. Run a web-enabled agent to confirm the exact latest DFL fork/commit supporting Ada+TF2 and to lock precise cuDNN minor versions.",
+  "confidence": "medium"
+}

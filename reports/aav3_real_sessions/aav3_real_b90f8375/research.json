@@ -1,0 +1,30 @@
+{
+  "findings": [
+    "math.factorial rejects non-integral numerics (e.g., 5.0) with ValueError; only integral, non-negative values are valid.",
+    "Best practice for custom factorial: accept integers and integer-like types via the __index__ protocol, not floats; reject negatives.",
+    "Use operator.index(n) to coerce integer-like inputs (e.g., NumPy integers) and raise TypeError for non-indexable types; raise ValueError for negative values.",
+    "bool is a subclass of int; many libraries explicitly reject bool inputs to avoid ambiguity.",
+    "For CLI, prefer argv parsing with argparse; print result to stdout; return non-zero exit on invalid input; avoid stdin unless batch use-cases exist.",
+    "Doctest is good for examples and smoke tests; for real testing, add unit tests (unittest or pytest).",
+    "Typing: annotate as factorial(n: SupportsIndex) -> int; internally coerce with operator.index; optionally reject bool explicitly.",
+    "Python versions: 3.13 released (Oct 2024), 3.12 is widely available; for new code, target >=3.10 as a baseline, and test on 3.10–3.13.",
+    "Project layout: prefer src/ layout; place implementation in src/<package>/math_utils.py (export factorial) rather than top-level script.",
+    "If packaging a CLI, declare console script via pyproject.toml (PEP 621 project.scripts)."
+  ],
+  "sources": [
+    "https://docs.python.org/3/library/math.html#math.factorial",
+    "https://docs.python.org/3/library/operator.html#operator.index",
+    "https://docs.python.org/3/library/typing.html#typing.SupportsIndex",
+    "https://docs.python.org/3/library/numbers.html#numbers.Integral",
+    "https://docs.python.org/3/library/stdtypes.html#typesnumeric",
+    "https://docs.python.org/3/library/argparse.html",
+    "https://docs.python.org/3/library/doctest.html",
+    "https://docs.python.org/3/library/unittest.html",
+    "https://packaging.python.org/en/latest/tutorials/packaging-projects/",
+    "https://peps.python.org/pep-0621/",
+    "https://devguide.python.org/versions/",
+    "https://peps.python.org/pep-0008/"
+  ],
+  "recommendation": "Reject non-integer numerics like 5.0; implement factorial to accept integer-like inputs via operator.index, raise ValueError for negatives, and optionally reject bool explicitly. Provide a minimal CLI using argparse that reads a single positional argument from argv and prints the result, with clear errors and non-zero exit on invalid input. Use doctest in the function docstring for examples plus a small unittest in tests/test_factorial.py for behavior. Target Python >=3.10 (test on 3.10–3.13). Place the function in src/<package>/math_utils.py and export it; if a CLI is desired, add a console script entry in pyproject.toml (PEP 621).",
+  "confidence": "medium"
+}

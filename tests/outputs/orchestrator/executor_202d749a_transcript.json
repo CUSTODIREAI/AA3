@@ -1,0 +1,40 @@
+{
+  "artifact_type": "execution_transcript",
+  "task_file": "tests/fixtures/test_simple.md",
+  "agent_id": "executor_202d749a",
+  "commands_executed": [
+    {
+      "command": "mkdir -p /workspace/test",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "timestamp": "2025-10-29T21:36:36.283444",
+      "duration_sec": 0.09224581718444824,
+      "success": true
+    },
+    {
+      "command": "echo \"Hello AAv2\" > /workspace/test/hello.txt",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "timestamp": "2025-10-29T21:36:36.375666",
+      "duration_sec": 0.09218215942382812,
+      "success": true
+    },
+    {
+      "command": "cat /workspace/test/hello.txt",
+      "exit_code": 0,
+      "stdout": "Hello AAv2\n",
+      "stderr": "",
+      "timestamp": "2025-10-29T21:36:36.464740",
+      "duration_sec": 0.08903717994689941,
+      "success": true
+    }
+  ],
+  "total_commands": 3,
+  "successful_commands": 3,
+  "failed_commands": 0,
+  "total_duration_sec": 0.2734651565551758,
+  "timestamp_start": "2025-10-29T21:36:36.189431",
+  "timestamp_end": "2025-10-29T21:36:36.464768"
+}

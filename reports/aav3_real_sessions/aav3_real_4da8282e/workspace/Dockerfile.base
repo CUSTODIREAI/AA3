@@ -1,0 +1,54 @@
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+# Minimal, reproducible base image for TF 2.13 + Python 3.10
+# Avoid COPY of local files to prevent build-context lstat errors.
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    TF_CPP_MIN_LOG_LEVEL=2 \
+    TF_FORCE_GPU_ALLOW_GROWTH=true
+
+SHELL ["/bin/bash", "-lc"]
+
+# System deps and Python
+RUN set -euxo pipefail \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+       python3 python3-venv python3-pip python3-dev \
+       git ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# venv
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip setuptools wheel
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# TensorFlow 2.13.x built for CUDA 11.8 + cuDNN 8
+RUN pip install --no-cache-dir "tensorflow==2.13.*"
+
+# Create non-root user and workspace
+RUN groupadd -g 1000 app && useradd -m -u 1000 -g 1000 app \
+    && mkdir -p /workspace/scripts \
+    && chown -R app:app /workspace
+
+USER app
+WORKDIR /workspace
+
+# Default command prints a minimal JSON about TF and GPU availability
+CMD python - <<'PY'
+import json
+try:
+    import tensorflow as tf
+    gpus = tf.config.list_physical_devices('GPU')
+    out = {
+        'ok': True,
+        'tf_version': tf.__version__,
+        'num_gpus': len(gpus),
+        'devices': [{'name': d.name, 'device_type': d.device_type} for d in tf.config.list_logical_devices()],
+    }
+except Exception as e:
+    out = {'ok': False, 'error': repr(e)}
+print(json.dumps(out))
+PY

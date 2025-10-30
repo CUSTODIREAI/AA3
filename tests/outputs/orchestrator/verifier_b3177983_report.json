@@ -1,0 +1,24 @@
+{
+  "artifact_type": "verification_report",
+  "transcript_id": "executor_202d749a_2025-10-29T21:36:36.464768",
+  "agent_id": "verifier_b3177983",
+  "criteria_checked": [
+    {
+      "criteria_type": "file",
+      "description": "File exists: /workspace/test/hello.txt",
+      "passed": true,
+      "details": "File exists: /workspace/test/hello.txt"
+    },
+    {
+      "criteria_type": "grep",
+      "description": "Pattern 'Hello AAv2' in /workspace/test/hello.txt",
+      "passed": true,
+      "details": "Pattern found: 'Hello AAv2' in /workspace/test/hello.txt"
+    }
+  ],
+  "total_criteria": 2,
+  "passed_criteria": 2,
+  "failed_criteria": 0,
+  "overall_pass": true,
+  "timestamp": "2025-10-29T21:36:36.607017"
+}

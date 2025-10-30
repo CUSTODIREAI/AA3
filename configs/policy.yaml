@@ -23,6 +23,14 @@ actions:
     params: [path, content]
   - type: fs.move
     params: [src, dst]
+  - type: fs.replace
+    params: [path, content]
+    # Replace file content - only allowed in workspace/ and staging/
+
+  # Plan metadata for quality checks
+  - type: plan.meta
+    params: [observables]
+    # Declare observable files for quality heuristics (e.g., report.json paths)
 
   # Git clone into workspace
   - type: git.clone
@@ -35,8 +43,9 @@ actions:
 
   # Container sandbox (PunkBox)
   - type: container.run
-    image_allowlist: ["custodire/dev:*", "custodire/ig-safe:*", "ghcr.io/custodire/*"]
+    image_allowlist: ["custodire/dev:*", "custodire/ig-safe:*", "custodire/dfl:*", "custodire/dfl-base:*", "ghcr.io/custodire/*"]
     flags_deny: ["--privileged","--pid=host","--net=host","--cap-add=SYS_ADMIN"]
+    flags_allow: ["--gpus"]  # GPU access for ML workloads
     mount_allowlist:
       - prefix: dataset
         mode: ro
@@ -53,13 +62,22 @@ actions:
       - prefix: /var/tmp/custodire
         mode: rw
     resources:
-      max_mem_mb: 16384
-      max_cpus: 8
+      max_mem_mb: 32768  # Increased for GPU workloads
+      max_cpus: 16       # Increased for multi-threaded builds
+      gpu_access: true   # Enable GPU passthrough
     runtime_allowlist: ["runsc","runc"]
+
+  # Docker build (for creating custom images)
+  - type: docker.build
+    params: [dockerfile_path, context_path, image_tag]
+    image_tag_allowlist: ["custodire/*"]  # Only allow custodire namespace
+    max_build_time_sec: 7200  # 2 hours for large ML images
+    cache_enabled: true
+    # Build context must be in workspace/ or staging/
 
   # Execute commands inside dev container (allowlisted binaries only)
   - type: exec.container_cmd
-    image_allowlist: ["custodire/dev:*"]
+    image_allowlist: ["custodire/dev:*", "custodire/dfl:*", "custodire/dfl-base:*"]
     cmd_allowlist:
       - ["python", "*"]
       - ["pip", "*"]
@@ -76,10 +94,36 @@ actions:
       - ["ffmpeg", "*"]
       - ["yt-dlp", "*"]
       - ["git", "*"]
+      - ["docker", "build", "*"]  # Allow docker build command
 
   # Append‑only dataset promotion
   - type: ingest.promote
     params: [items]   # list of {"src","relative_dst"?, "tags"?:{}}
+
+  # Agent Passthrough Shell - full freedom inside safe sandbox
+  - type: agent.passthrough_shell
+    params: [cmd]  # Any shell command string
+    description: "Execute arbitrary commands inside agent sandbox with full capabilities"
+    sandbox:
+      container: "agent-sandbox"  # Target existing long-running container
+      mount_allowlist:
+        - prefix: dataset
+          mode: ro
+        - prefix: evidence
+          mode: ro
+        - prefix: staging-final
+          mode: ro
+        - prefix: workspace
+          mode: rw
+        - prefix: staging
+          mode: rw
+        - prefix: cache
+          mode: rw
+      gpu_access: true
+      network_access: true
+      no_resource_limits: true  # No CPU/RAM caps - full freedom
+    # Invariant: dataset/ and evidence/ are immutable (RO mounts)
+    # Only way to publish: ingest.promote (append-only with hashes)
 
   # Stop our own jobs
   - type: job.stop

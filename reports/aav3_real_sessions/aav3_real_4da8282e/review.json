@@ -1,0 +1,93 @@
+{
+  "implementation": "Two-image Docker setup for DeepFaceLab on RTX 4090 using CUDA 11.8, cuDNN 8, TensorFlow 2.13, Python 3.10. Includes a reusable base image with pinned system and Python deps, and a DFL image layered on top with repo+commit build args. Adds non-root user, venv, OCI labels, workspace layout, and environment defaults for GPU memory growth. Provides build/test/export scripts, docker-compose with GPU, a TF GPU verification test, a cautious DFL smoke test scaffold, version matrix docs, and metadata generation with SHA-256 for Custodire ingest via staging/.",
+  "files_to_create": [
+    {
+      "path": "docker/Dockerfile.base",
+      "content": "ARG BASE_IMAGE=nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04\nARG BUILD_DATE\nARG VCS_REF\nARG IMAGE_VERSION=0.1.0\n\nFROM ${BASE_IMAGE}\n\nLABEL org.opencontainers.image.title=\"Custodire DFL Base (CUDA 11.8 / TF 2.13 / Py3.10)\" \\\n      org.opencontainers.image.description=\"Reusable CUDA+TensorFlow base for DeepFaceLab on RTX 4090\" \\\n      org.opencontainers.image.version=\"${IMAGE_VERSION}\" \\\n      org.opencontainers.image.created=\"${BUILD_DATE}\" \\\n      org.opencontainers.image.revision=\"${VCS_REF}\" \\\n      org.opencontainers.image.source=\"https://example.invalid/custodire-aa-system\" \\\n      org.opencontainers.image.licenses=\"Proprietary/Project-Specific\"\n\nENV DEBIAN_FRONTEND=noninteractive\n\nRUN apt-get update -y && \\\n    apt-get install -y --no-install-recommends \\\n      python3 \\\n      python3-venv \\\n      python3-pip \\\n      python3-dev \\\n      git \\\n      ca-certificates \\\n      ffmpeg \\\n      tzdata \\\n      libglib2.0-0 \\\n      libsm6 \\\n      libxext6 \\\n      libxrender1 \\\n      libgl1 && \\\n    rm -rf /var/lib/apt/lists/*\n\n# Python venv\nENV VIRTUAL_ENV=/opt/venv\nRUN python3 -m venv ${VIRTUAL_ENV}\nENV PATH=\"${VIRTUAL_ENV}/bin:${PATH}\" \\\n    PIP_DISABLE_PIP_VERSION_CHECK=1 \\\n    PIP_NO_CACHE_DIR=1 \\\n    PYTHONUNBUFFERED=1 \\\n    TF_FORCE_GPU_ALLOW_GROWTH=1 \\\n    TF_ENABLE_ONEDNN_OPTS=0\n\n# Pin core Python packages known to work with TF 2.13 + CUDA 11.8\nRUN python -m pip install --upgrade pip setuptools wheel && \\\n    python -m pip install \\\n      tensorflow==2.13.1 \\\n      numpy==1.23.5 \\\n      scipy==1.10.1 \\\n      h5py==3.8.0 \\\n      opencv-python==4.8.1.78 \\\n      scikit-image==0.22.0 \\\n      pillow==10.0.1 \\\n      tqdm==4.66.1 \\\n      psutil==5.9.5 \\\n      numexpr==2.8.6 \\\n      imageio==2.31.5 \\\n      pyyaml==6.0.1\n\n# Non-root user and workspace\nARG USERNAME=appuser\nARG USER_UID=1000\nARG USER_GID=1000\nRUN groupadd --gid ${USER_GID} ${USERNAME} && \\\n    useradd --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} && \\\n    mkdir -p /workspace/{data,models,aligned,output} && \\\n    chown -R ${USERNAME}:${USERNAME} /workspace\n\n# GPU test helper\nCOPY --chown=${USERNAME}:${USERNAME} scripts/test_tf_gpu.py /opt/tests/test_tf_gpu.py\n\nUSER ${USERNAME}\nWORKDIR /workspace\n\n# Default shell\nCMD [\"bash\"]\n"
+    },
+    {
+      "path": "docker/Dockerfile.dfl",
+      "content": "ARG BASE_IMAGE_TAG=cuda11.8-tf2.13-py3.10\nARG REGISTRY=custodire\nARG BUILD_DATE\nARG VCS_REF\nARG IMAGE_VERSION=0.1.0\n\nFROM ${REGISTRY}/dfl-base:${BASE_IMAGE_TAG}\n\nLABEL org.opencontainers.image.title=\"Custodire DeepFaceLab (on CUDA 11.8 / TF 2.13)\" \\\n      org.opencontainers.image.description=\"DeepFaceLab environment layered on CUDA+TF base. Repo/commit configurable.\" \\\n      org.opencontainers.image.version=\"${IMAGE_VERSION}\" \\\n      org.opencontainers.image.created=\"${BUILD_DATE}\" \\\n      org.opencontainers.image.revision=\"${VCS_REF}\" \\\n      org.opencontainers.image.source=\"https://example.invalid/custodire-aa-system\" \\\n      org.opencontainers.image.licenses=\"Proprietary/Project-Specific\"\n\n# Build args to choose DFL fork and commit. Default upstream (TF1) for cloning only; recommend overriding to TF2-ready fork.\nARG DFL_REPO=\"https://github.com/iperov/DeepFaceLab.git\"\nARG DFL_COMMIT=\"b7f8249a8b2c0a1f23b8f7bc3e3e8c6f0c28d6b1\" # placeholder; override to TF2-capable fork commit\n\nUSER root\n\n# Extra Python deps sometimes required by DFL forks; keep minimal and pinned\nRUN python -m pip install \\\n      ffmpy==0.3.1 \\\n      colour-science==0.4.3 \\\n      scikit-learn==1.3.2 \\\n      albumentations==1.3.1\n\n# Place DFL under /opt/dfl and keep workspace clean\nRUN mkdir -p /opt/dfl\nWORKDIR /opt/dfl\n\n# Shallow clone and checkout pinned commit\nRUN git clone --filter=blob:none --depth 1 ${DFL_REPO} . && \\\n    (git fetch --depth 1 origin ${DFL_COMMIT} || true) && \\\n    (git checkout ${DFL_COMMIT} || true)\n\n# Optionally install repo-provided requirements if present\nRUN if [ -f requirements.txt ]; then python -m pip install -r requirements.txt || true; fi && \\\n    if [ -f requirements-cuda.txt ]; then python -m pip install -r requirements-cuda.txt || true; fi\n\n# Entrypoint wrapper and workspace skeleton\nCOPY dfl/entrypoint.sh /usr/local/bin/dfl-entrypoint\nRUN chmod +x /usr/local/bin/dfl-entrypoint && \\\n    mkdir -p /workspace/{data_src,data_dst,model,aligned,output,weights} && \\\n    chown -R appuser:appuser /opt/dfl /workspace\n\nUSER appuser\nWORKDIR /workspace\n\nENV DFL_DIR=/opt/dfl \\\n    TF_FORCE_GPU_ALLOW_GROWTH=1 \\\n    TF_ENABLE_ONEDNN_OPTS=0\n\nENTRYPOINT [\"/usr/local/bin/dfl-entrypoint\"]\nCMD [\"bash\"]\n"
+    },
+    {
+      "path": "docker/.dockerignore",
+      "content": "# Context trimming\n.git\n.gitignore\n**/__pycache__/**\n**/*.pyc\n**/*.pyo\n**/*.pyd\n**/.Python\n**/*.swp\n**/*.swo\n**/.pytest_cache/**\n**/.mypy_cache/**\n**/.venv/**\nvenv/\nnode_modules/\ndataset/\noutputs/\nworkspace/\n.staging/\nstaging/\n"
+    },
+    {
+      "path": "scripts/build_base.sh",
+      "content": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Builds the CUDA+TF base image\nREGISTRY=\"custodire\"\nTAG_BASE=\"cuda11.8-tf2.13-py3.10\"\nIMAGE_BASE=\"${REGISTRY}/dfl-base:${TAG_BASE}\"\nBUILD_DATE=$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")\nVCS_REF=${VCS_REF:-$(git rev-parse --short HEAD 2>/dev/null || echo \"nogit\")}\n\nDOCKER_BUILDKIT=1 docker buildx build \\\n  --pull \\\n  --build-arg BASE_IMAGE=nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 \\\n  --build-arg BUILD_DATE=\"${BUILD_DATE}\" \\\n  --build-arg VCS_REF=\"${VCS_REF}\" \\\n  -f docker/Dockerfile.base \\\n  -t \"${IMAGE_BASE}\" \\\n  .\n\necho \"Built ${IMAGE_BASE}\"\n"
+    },
+    {
+      "path": "scripts/build_dfl.sh",
+      "content": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Builds the DFL image from the base\nREGISTRY=\"custodire\"\nTAG_BASE=\"cuda11.8-tf2.13-py3.10\"\nIMAGE_BASE=\"${REGISTRY}/dfl-base:${TAG_BASE}\"\nIMAGE_DFL=\"${REGISTRY}/dfl:tf2.13-py3.10\"\n\n# Override to a TF2-capable fork/commit known-good for Ada\nDFL_REPO=${DFL_REPO:-\"https://github.com/iperov/DeepFaceLab.git\"}\nDFL_COMMIT=${DFL_COMMIT:-\"b7f8249a8b2c0a1f23b8f7bc3e3e8c6f0c28d6b1\"}\n\nBUILD_DATE=$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")\nVCS_REF=${VCS_REF:-$(git rev-parse --short HEAD 2>/dev/null || echo \"nogit\")}\n\nDOCKER_BUILDKIT=1 docker buildx build \\\n  --build-arg REGISTRY=\"${REGISTRY}\" \\\n  --build-arg BASE_IMAGE_TAG=\"${TAG_BASE}\" \\\n  --build-arg DFL_REPO=\"${DFL_REPO}\" \\\n  --build-arg DFL_COMMIT=\"${DFL_COMMIT}\" \\\n  --build-arg BUILD_DATE=\"${BUILD_DATE}\" \\\n  --build-arg VCS_REF=\"${VCS_REF}\" \\\n  -f docker/Dockerfile.dfl \\\n  -t \"${IMAGE_DFL}\" \\\n  .\n\necho \"Built ${IMAGE_DFL} (DFL_REPO=${DFL_REPO} commit=${DFL_COMMIT})\"\n"
+    },
+    {
+      "path": "scripts/test_gpu.sh",
+      "content": "#!/usr/bin/env bash\nset -euo pipefail\n\nIMAGE=${1:-\"custodire/dfl-base:cuda11.8-tf2.13-py3.10\"}\n\necho \"Running nvidia-smi inside ${IMAGE}...\"\ndocker run --rm --gpus all --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=all -e TF_FORCE_GPU_ALLOW_GROWTH=1 \\\n  \"${IMAGE}\" bash -lc 'nvidia-smi || true; python /opt/tests/test_tf_gpu.py'\n"
+    },
+    {
+      "path": "scripts/test_tf_gpu.py",
+      "content": "import json\nimport os\nimport sys\n\nout = {\"python\": sys.version.split()[0]}\ntry:\n    import tensorflow as tf\n    gpus = tf.config.list_physical_devices(\"GPU\")\n    out.update({\n        \"tensorflow\": tf.__version__,\n        \"gpu_count\": len(gpus),\n        \"gpus\": [str(g) for g in gpus],\n    })\n    for gpu in gpus:\n        try:\n            tf.config.experimental.set_memory_growth(gpu, True)\n        except Exception as e:\n            out.setdefault(\"warnings\", []).append(f\"memory_growth_failed:{e}\")\nexcept Exception as e:\n    out[\"error\"] = f\"TF import failed: {e}\"\n\nprint(json.dumps(out))\n"
+    },
+    {
+      "path": "scripts/test_dfl_smoke.sh",
+      "content": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Non-invasive smoke test: verify DFL repo presence and Python import in container\nIMAGE=${1:-\"custodire/dfl:tf2.13-py3.10\"}\n\ndocker run --rm --gpus all -e NVIDIA_VISIBLE_DEVICES=all -e TF_FORCE_GPU_ALLOW_GROWTH=1 \\\n  -v \"$(pwd)/workspace:/workspace\" \\\n  \"${IMAGE}\" bash -lc '\n  set -e\n  echo \"DFL dir:\" $DFL_DIR\n  test -d \"$DFL_DIR\" || (echo \"DFL dir missing\" && exit 1)\n  python - <<PY\nimport os, sys, json\nprint(json.dumps({\"pwd\": os.getcwd(), \"dfl_dir\": os.getenv(\"DFL_DIR\")}))\nPY\n  '\n"
+    },
+    {
+      "path": "scripts/export_images.sh",
+      "content": "#!/usr/bin/env bash\nset -euo pipefail\n\nREGISTRY=\"custodire\"\nTAG_BASE=\"cuda11.8-tf2.13-py3.10\"\nIMAGE_BASE=\"${REGISTRY}/dfl-base:${TAG_BASE}\"\nIMAGE_DFL=\"${REGISTRY}/dfl:tf2.13-py3.10\"\n\nOUTDIR=\"staging/docker/images\"\nMETADIR=\"staging/metadata\"\nmkdir -p \"${OUTDIR}\" \"${METADIR}\"\n\nsave_and_hash() {\n  local image=\"$1\"; local name=\"$2\";\n  local tar=\"${OUTDIR}/${name}.tar\"\n  echo \"Saving ${image} -> ${tar}\"\n  docker image save -o \"${tar}\" \"${image}\"\n  local sha\n  sha=$(sha256sum \"${tar}\" | awk '{print $1}')\n  local bytes\n  bytes=$(stat -c%s \"${tar}\")\n  echo \"${sha}  ${tar}\" > \"${tar}.sha256\"\n  jq -n --arg name \"${name}\" --arg image \"${image}\" --arg sha \"${sha}\" --arg path \"${tar}\" --argjson bytes ${bytes} '{name:$name,image:$image,sha256:$sha,bytes:$bytes,path:$path}' \\\n    > \"${METADIR}/${name}.image.json\"\n  # Prepare ingest item\n  jq -nc --arg src \"${tar}\" --arg rel \"docker/images/${name}.tar\" \\\n    --arg t1 \"docker\" --arg t2 \"image\" --arg t3 \"dfl\" --arg t4 \"${TAG_BASE}\" \\\n    '{src:$src,relative_dst:$rel,tags:[$t1,$t2,$t3,$t4]}' >> \"${METADIR}/ingest_items.jsonl\"\n}\n\nsave_and_hash \"${IMAGE_BASE}\" \"dfl-base-${TAG_BASE}\"\nsave_and_hash \"${IMAGE_DFL}\" \"dfl-tf2.13-py3.10\"\n\necho \"Artifacts and metadata in staging/. For ingest, use ingest.promote on metadata/ingest_items.jsonl.\"\n"
+    },
+    {
+      "path": "docker-compose.yml",
+      "content": "version: \"3.9\"\nservices:\n  dfl:\n    image: custodire/dfl:tf2.13-py3.10\n    container_name: dfl\n    deploy:\n      resources:\n        reservations:\n          devices:\n            - capabilities: [gpu]\n    runtime: nvidia\n    environment:\n      - NVIDIA_VISIBLE_DEVICES=all\n      - TF_FORCE_GPU_ALLOW_GROWTH=1\n      - TF_ENABLE_ONEDNN_OPTS=0\n    volumes:\n      - ./workspace:/workspace\n    working_dir: /workspace\n    stdin_open: true\n    tty: true\n"
+    },
+    {
+      "path": "dfl/entrypoint.sh",
+      "content": "#!/usr/bin/env bash\nset -euo pipefail\n\nexport TF_FORCE_GPU_ALLOW_GROWTH=${TF_FORCE_GPU_ALLOW_GROWTH:-1}\nexport TF_ENABLE_ONEDNN_OPTS=${TF_ENABLE_ONEDNN_OPTS:-0}\n\n# Ensure workspace dirs exist\nmkdir -p /workspace/{data_src,data_dst,model,aligned,output,weights}\n\ncat <<'BANNER'\n================ DeepFaceLab Container =================\n- DFL dir: $DFL_DIR\n- Workspace: /workspace\n- GPU growth: $TF_FORCE_GPU_ALLOW_GROWTH\n- OneDNN opts: $TF_ENABLE_ONEDNN_OPTS\nCommands:\n  dfl-shell            -> interactive bash\n  dfl-tf-gpu-check     -> python /opt/tests/test_tf_gpu.py\n  dfl-help             -> try to show DFL help (fork-dependent)\n=======================================================\nBANNER\n\ncase \"${1:-}\" in\n  dfl-shell)\n    shift; exec bash \"$@\" ;;\n  dfl-tf-gpu-check)\n    shift; exec python /opt/tests/test_tf_gpu.py \"$@\" ;;\n  dfl-help)\n    shift; \n    if [ -f \"$DFL_DIR/main.py\" ]; then exec python \"$DFL_DIR/main.py\" help \"$@\"; else echo \"No main.py in DFL dir ($DFL_DIR).\"; exec bash; fi ;;\n  *)\n    exec \"$@\" ;;\n\nesac\n"
+    },
+    {
+      "path": "docs/DFL_DOCKER.md",
+      "content": "# Custodire DeepFaceLab Docker (CUDA 11.8 / TF 2.13 / Py3.10)\n\nOverview\n- Two-image design: base (CUDA+TF) and DFL layer.\n- Pinned versions: CUDA 11.8, cuDNN 8, TF 2.13.1, Python 3.10.\n- Non-root user, workspace at /workspace, GPU memory growth enabled.\n\nBuild\n1) Base image:\n   ./scripts/build_base.sh\n2) DFL image (override to TF2-capable fork recommended):\n   DFL_REPO=https://github.com/<fork>/DeepFaceLab.git \\\n   DFL_COMMIT=<commit_sha> \\\n   ./scripts/build_dfl.sh\n\nTest GPU\n- Base: ./scripts/test_gpu.sh\n- DFL smoke: ./scripts/test_dfl_smoke.sh\n\nRun\n- docker compose up -d\n- docker compose exec dfl dfl-tf-gpu-check\n- docker compose exec dfl dfl-shell\n\nNotes\n- Upstream iperov/DeepFaceLab targets TF1.x; for RTX 4090 + TF2, use a maintained fork compatible with TF 2.13/CUDA 11.8.\n- Mixed precision is not enabled by default. Enable only if the fork documents correct loss-scaling.\n- ffmpeg is installed from Ubuntu repos; NVENC availability depends on host driver/runtime and distro build flags.\n\nCustodire Ingest\n- Export images and metadata:\n  ./scripts/export_images.sh\n- This writes image tars and JSON into staging/; use ingest.promote on metadata/ingest_items.jsonl.\n"
+    },
+    {
+      "path": "docs/VERSION_MATRIX.md",
+      "content": "# Version Matrix and Compatibility Notes\n\nChosen Matrix\n- CUDA: 11.8.0 (driver: R520+; common 535/550)\n- cuDNN: 8.x (bundled in TF 2.13 Linux wheels)\n- TensorFlow: 2.13.1 (merged CPU/GPU wheels)\n- Python: 3.10 (Ubuntu 22.04 default)\n\nRationale\n- TF 2.13 on CUDA 11.8 is widely stable on Ada (RTX 4090).\n- Python 3.10 balances ecosystem support and TF compatibility.\n\nPins to Avoid Breakage\n- numpy==1.23.5, opencv-python==4.8.1.78, scikit-image==0.22.0, h5py==3.8.0, scipy==1.10.1, tqdm==4.66.1.\n\nCaveats\n- Upstream DeepFaceLab is TF1.x; use a TF2-compatible fork for training.\n- Mixed precision: enable cautiously; NaNs possible without proper scaling.\n- FFmpeg NVENC depends on build flags; performance varies.\n"
+    },
+    {
+      "path": "metadata/version_matrix.json",
+      "content": "{\n  \"cuda\": \"11.8.0\",\n  \"cudnn\": \"8\",\n  \"tensorflow\": \"2.13.1\",\n  \"python\": \"3.10\",\n  \"ubuntu\": \"22.04\",\n  \"notes\": [\n    \"TF 2.13 Linux wheels bundle CUDA 11.8/cuDNN 8 runtimes\",\n    \"Use NVIDIA Container Toolkit and 520+ driver\",\n    \"DFL upstream is TF1; prefer TF2-compatible fork\"\n  ]\n}\n"
+    },
+    {
+      "path": "staging/README.txt",
+      "content": "This folder holds exported Docker images and metadata prior to Custodire ingest.promote. Do not modify files in-place after export. Use scripts/export_images.sh to populate.\n"
+    }
+  ],
+  "key_decisions": [
+    "Targeted CUDA 11.8 + TF 2.13.1 + Python 3.10 for Ada stability and ecosystem support.",
+    "Separated reusable CUDA+TF base from DFL layer to speed rebuilds and reduce risk.",
+    "Pinned Python deps (numpy<2 etc.) aligned with TF 2.13 to avoid ABI/runtime issues.",
+    "Enabled TF GPU memory growth and disabled OneDNN opts by default to reduce NaN/perf surprises.",
+    "Left DFL repo/commit as build args with a placeholder default; requires pinning to a TF2-compatible fork by the integrator.",
+    "Added OCI labels and deterministic build args (date, VCS ref) for provenance.",
+    "Provided scripts for build, GPU verification, cautious DFL smoke test, and image export with SHA-256 + ingest JSONL.",
+    "Kept ffmpeg from Ubuntu repos for simplicity; documented NVENC caveat without compiling from source."
+  ],
+  "status": "needs_review",
+  "_created_files": [
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/docker/Dockerfile.base",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/docker/Dockerfile.dfl",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/docker/.dockerignore",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/scripts/build_base.sh",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/scripts/build_dfl.sh",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/scripts/test_gpu.sh",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/scripts/test_tf_gpu.py",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/scripts/test_dfl_smoke.sh",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/scripts/export_images.sh",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/docker-compose.yml",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/dfl/entrypoint.sh",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/docs/DFL_DOCKER.md",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/docs/VERSION_MATRIX.md",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/metadata/version_matrix.json",
+    "reports/aav3_real_sessions/aav3_real_4da8282e/workspace/staging/README.txt"
+  ]
+}

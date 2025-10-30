@@ -1,0 +1,23 @@
+{
+  "approach": "Implement an iterative factorial function with strict input validation, document via doctest examples, and verify with a small unittest suite.",
+  "steps": [
+    "Define factorial(n: int) with validation",
+    "Raise ValueError for negative inputs",
+    "Raise TypeError for non-integers",
+    "Implement iterative multiplication loop",
+    "Add docstring with doctest examples",
+    "Add __main__ block to run doctests",
+    "Create unittest file with basic cases",
+    "Test edge cases: 0, 1, small, larger n",
+    "Test errors: negative, non-integer inputs"
+  ],
+  "unknowns": [
+    "Target Python version (impacts typing/doctest nuances)",
+    "Whether floats like 5.0 should be accepted if integral",
+    "Whether a CLI interface is desired (parse argv) or not",
+    "Preferred project layout (single file vs separate tests directory)",
+    "Any performance constraints or upper bounds for n",
+    "Whether to allow using math.factorial for cross-checks in tests"
+  ],
+  "rationale": "An iterative implementation avoids recursion depth limits and is straightforward to reason about. Explicit type and value checks ensure predictable behavior and clear errors for invalid input. Doctest examples double as usage documentation and quick correctness checks, while a minimal unittest suite provides structured regression coverage for normal and error paths."
+}

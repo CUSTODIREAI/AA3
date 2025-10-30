@@ -1,0 +1,29 @@
+{
+  "findings": [
+    "Python 3.8 reached end-of-life in Oct 2024; new projects should target a currently supported baseline such as Python >=3.9 or preferably >=3.10 for longer support and modern typing/features.",
+    "Standard library math.factorial accepts only non-negative integers; floats (even 5.0) are rejected with TypeError per docs.",
+    "bool is a subclass of int in Python; math.factorial(True) returns 1, but most APIs explicitly reject bools to avoid surprising behavior.",
+    "Best-practice for integer acceptance is to use operator.index(n) to allow int-like types (e.g., numpy.int64) while rejecting floats and decimals; explicitly guard against bool.",
+    "Negative inputs should raise ValueError; non-integral inputs should raise TypeError to mirror math.factorial semantics.",
+    "Pytest is the de facto standard for Python testing due to concise assertions, fixtures, and broad ecosystem support; unittest remains viable but is more verbose.",
+    "Use the PyPA-recommended src/ layout for packages (e.g., src/yourpkg/factorial.py and tests/test_factorial.py) and manage configuration via pyproject.toml (PEP 621).",
+    "For performance and correctness, prefer delegating to math.factorial under the hood when allowed; it is implemented in C and is significantly faster for large n than pure-Python loops.",
+    "Factorial grows extremely fast; time and memory scale superlinearly with n due to big integer arithmetic. Avoid hard-coded maximums by default, but document that very large n will be slow; optionally allow a configurable safety limit.",
+    "CLI is optional; for a small utility function, an importable API is sufficient. If desired, expose a simple console_scripts entry point or python -m yourpkg for convenience."
+  ],
+  "sources": [
+    "https://devguide.python.org/versions/",
+    "https://docs.python.org/3/library/math.html#math.factorial",
+    "https://docs.python.org/3/library/stdtypes.html#boolean-values",
+    "https://docs.python.org/3/library/operator.html#operator.index",
+    "https://docs.python.org/3/library/numbers.html#numbers.Integral",
+    "https://docs.pytest.org/en/stable/",
+    "https://docs.python.org/3/library/unittest.html",
+    "https://packaging.python.org/en/latest/tutorials/packaging-projects/",
+    "https://packaging.python.org/en/latest/discussions/src-layout/",
+    "https://peps.python.org/pep-0621/",
+    "https://packaging.python.org/en/latest/specifications/entry-points/"
+  ],
+  "recommendation": "Target Python >=3.10 (or >=3.9 if required by downstreams). Implement factorial as a thin wrapper around math.factorial for performance and correctness. Accept only integers via operator.index(n) to support int-like types, explicitly reject bool (e.g., if isinstance(n, bool): raise TypeError), and raise ValueError for negatives. Do not accept floats (even 5.0); document this choice to avoid ambiguity. Use pytest for tests with a src/ layout: place code in src/yourpkg/factorial.py, expose in __init__.py, and put tests in tests/test_factorial.py configured via pyproject.toml. Provide no hard-coded max input; instead document performance characteristics and optionally allow an application-level safety limit parameter. Skip a CLI unless there is a concrete need; if desired, add a minimal console_scripts entry.",
+  "confidence": "medium"
+}

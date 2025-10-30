@@ -1,0 +1,23 @@
+{
+  "approach": "Implement a single self-contained Python module with an iterative factorial function, explicit input validation, a docstring containing doctest examples, and inline basic tests executed under a __main__ guard.",
+  "steps": [
+    "Create file `factorial.py`",
+    "Define `factorial(n: int) -> int`",
+    "Validate type; raise TypeError for non-ints",
+    "Validate range; raise ValueError if n < 0",
+    "Compute factorial iteratively from 2..n",
+    "Add docstring with description and doctest examples",
+    "Add asserts for 0, 1, typical, large n",
+    "Add tests that negative n raises ValueError",
+    "Add tests that non-int raises TypeError",
+    "Add `__main__` block to run doctest and asserts"
+  ],
+  "unknowns": [
+    "Should non-integer numerics like 5.0 be accepted or rejected?",
+    "Is a CLI interface (stdin/argv and printing) desired?",
+    "Preferred test style: doctest only, unittest, or simple asserts?",
+    "Target Python version and typing/strictness expectations",
+    "Expected filename/location in the repository"
+  ],
+  "rationale": "An iterative approach is simple, avoids recursion depth limits, and works efficiently with Python's arbitrary-precision integers. Clear TypeError/ValueError aligns with Python norms and the requirement to handle n >= 0 and reject negatives. Doctest examples make the docstring executable for quick validation, while inline asserts provide basic tests without external frameworks. Keeping everything in one file makes the solution easy to run and integrate."
+}

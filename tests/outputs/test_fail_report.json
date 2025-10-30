@@ -1,0 +1,18 @@
+{
+  "artifact_type": "verification_report",
+  "transcript_id": "test_exec_fail_2025-10-29T21:36:36.074939",
+  "agent_id": "test_verify_fail",
+  "criteria_checked": [
+    {
+      "criteria_type": "file",
+      "description": "File exists: /workspace/output.txt",
+      "passed": false,
+      "details": "File missing: /workspace/output.txt"
+    }
+  ],
+  "total_criteria": 1,
+  "passed_criteria": 0,
+  "failed_criteria": 1,
+  "overall_pass": false,
+  "timestamp": "2025-10-29T21:36:36.153210"
+}

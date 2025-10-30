@@ -1,0 +1,12 @@
+{
+  "cuda": "11.8.0",
+  "cudnn": "8",
+  "tensorflow": "2.13.1",
+  "python": "3.10",
+  "ubuntu": "22.04",
+  "notes": [
+    "TF 2.13 Linux wheels bundle CUDA 11.8/cuDNN 8 runtimes",
+    "Use NVIDIA Container Toolkit and 520+ driver",
+    "DFL upstream is TF1; prefer TF2-compatible fork"
+  ]
+}

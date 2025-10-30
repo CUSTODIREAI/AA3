@@ -1,0 +1,22 @@
+{
+  "artifact_type": "execution_transcript",
+  "task_file": "tests/fixtures/test_fail.md",
+  "agent_id": "test_exec_fail",
+  "commands_executed": [
+    {
+      "command": "ls /nonexistent_directory",
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "ls: cannot access '/nonexistent_directory': No such file or directory\n",
+      "timestamp": "2025-10-29T21:36:36.074909",
+      "duration_sec": 0.09713101387023926,
+      "success": false
+    }
+  ],
+  "total_commands": 2,
+  "successful_commands": 0,
+  "failed_commands": 1,
+  "total_duration_sec": 0.09713101387023926,
+  "timestamp_start": "2025-10-29T21:36:35.976038",
+  "timestamp_end": "2025-10-29T21:36:36.074939"
+}

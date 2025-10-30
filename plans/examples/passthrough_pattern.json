@@ -1,0 +1,91 @@
+{
+  "plan_id": "example-passthrough-pattern-001",
+  "description": "EXAMPLE: Demonstrates correct usage of agent.passthrough_shell for web lookups, docker builds, and GPU testing",
+  "reasoning": "This example shows the PREFERRED pattern: Use agent.passthrough_shell to EXECUTE commands (curl, docker build, tests) instead of only writing scripts. This ensures we get current data, actually build images, and verify functionality.",
+  "actions": [
+    {
+      "id": "A1",
+      "type": "agent.passthrough_shell",
+      "params": {
+        "cmd": "curl -s https://api.github.com/repos/NVIDIA/cuda-samples/releases/latest | jq -r '.tag_name' > /workspace/cuda_latest.txt && cat /workspace/cuda_latest.txt"
+      },
+      "description": "Fetch latest CUDA version from GitHub API and save to workspace"
+    },
+    {
+      "id": "A2",
+      "type": "agent.passthrough_shell",
+      "params": {
+        "cmd": "curl -s https://pypi.org/pypi/tensorflow/json | jq -r '.info.version' > /workspace/tf_latest.txt && cat /workspace/tf_latest.txt"
+      },
+      "description": "Fetch latest TensorFlow version from PyPI"
+    },
+    {
+      "id": "A3",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/docker/Dockerfile",
+        "content": "FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04\nRUN apt-get update && apt-get install -y python3-pip\nRUN pip install tensorflow==2.13.1\nCMD [\"python3\"]"
+      },
+      "description": "Write Dockerfile using versions determined from web lookups"
+    },
+    {
+      "id": "A4",
+      "type": "agent.passthrough_shell",
+      "params": {
+        "cmd": "cd /staging && docker build -t example/test:latest -f docker/Dockerfile . 2>&1 | tee /workspace/build.log",
+        "timeout_sec": 1800
+      },
+      "description": "BUILD THE IMAGE NOW using docker build (not just writing a script)"
+    },
+    {
+      "id": "A5",
+      "type": "agent.passthrough_shell",
+      "params": {
+        "cmd": "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader > /workspace/gpu_info.txt && cat /workspace/gpu_info.txt"
+      },
+      "description": "Verify GPU access and record GPU info"
+    },
+    {
+      "id": "A6",
+      "type": "agent.passthrough_shell",
+      "params": {
+        "cmd": "docker run --rm --gpus all example/test:latest python3 -c \"import tensorflow as tf; print('TensorFlow version:', tf.__version__); print('GPUs available:', len(tf.config.list_physical_devices('GPU')))\" > /workspace/tf_gpu_test.txt 2>&1 && cat /workspace/tf_gpu_test.txt"
+      },
+      "description": "TEST the built image with GPU access (execute test, don't just write script)"
+    },
+    {
+      "id": "A7",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/BUILDLOG.md",
+        "content": "# Build Results\n\n## Versions Fetched\n- CUDA: (see workspace/cuda_latest.txt)\n- TensorFlow: (see workspace/tf_latest.txt)\n\n## Build Status\nSee workspace/build.log for full docker build output.\n\n## GPU Test\nSee workspace/tf_gpu_test.txt for TensorFlow GPU verification.\n\n## Evidence Files\n- /workspace/cuda_latest.txt\n- /workspace/tf_latest.txt\n- /workspace/build.log\n- /workspace/gpu_info.txt\n- /workspace/tf_gpu_test.txt\n"
+      },
+      "description": "Create build log documenting what was executed and where evidence is"
+    },
+    {
+      "id": "A8",
+      "type": "ingest.promote",
+      "items": [
+        {
+          "src": "staging/docker/Dockerfile",
+          "relative_dst": "docker/example-test.Dockerfile",
+          "tags": {"example": "passthrough_pattern", "built": "true", "tested": "true"}
+        },
+        {
+          "src": "staging/BUILDLOG.md",
+          "relative_dst": "docs/example-build-log.md",
+          "tags": {"type": "evidence", "example": "passthrough_pattern"}
+        }
+      ],
+      "description": "Promote Dockerfile and build log to dataset with evidence tags"
+    }
+  ],
+  "key_insights": [
+    "Use agent.passthrough_shell to FETCH current data (curl/wget) instead of hardcoding versions",
+    "Use agent.passthrough_shell to BUILD images (docker build) instead of only writing build scripts",
+    "Use agent.passthrough_shell to TEST functionality (nvidia-smi, python tests) instead of only writing test scripts",
+    "Save evidence files to /workspace/ to prove commands were executed",
+    "Only use fs.write for files that need to be promoted to dataset, not for executable scripts",
+    "End with ingest.promote to publish results with proper tags"
+  ]
+}

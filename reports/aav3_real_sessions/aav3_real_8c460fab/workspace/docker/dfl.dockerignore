@@ -1,0 +1,29 @@
+# Exclude everything by default to minimize context
+**
+
+# Allow only our Dockerfiles and scripts
+!dfl-base.Dockerfile
+!dfl.Dockerfile
+!entrypoint.dfl.sh
+!build_dfl_images.sh
+!test_dfl_rtx4090.sh
+!dfl-compose.yaml
+
+# Never send local workspace/models to the daemon
+workspace/
+models/
+pretrained/
+checkpoints/
+outputs/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.jpg
+*.jpeg
+*.png
+*.webp

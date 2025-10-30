@@ -1,0 +1,35 @@
+{
+  "artifact_type": "synthesis_report",
+  "task_file": "tests/fixtures/test_simple.md",
+  "orchestrator_id": "orchestrator_9ce63ae2",
+  "agents_spawned": [
+    {
+      "type": "executor",
+      "agent_id": "executor_202d749a",
+      "timestamp": "2025-10-29T21:36:36.189428",
+      "reflection_enabled": true
+    },
+    {
+      "type": "verifier",
+      "agent_id": "verifier_b3177983",
+      "timestamp": "2025-10-29T21:36:36.467045"
+    }
+  ],
+  "execution_rounds": 1,
+  "final_status": "complete",
+  "artifacts_generated": [
+    "tests/outputs/orchestrator/executor_202d749a_transcript.json",
+    "tests/outputs/orchestrator/verifier_b3177983_report.json"
+  ],
+  "metrics": {
+    "total_agents": 2,
+    "executors_spawned": 1,
+    "verifiers_spawned": 1,
+    "reviewers_spawned": 0,
+    "artifacts_generated": 2,
+    "rounds_executed": 1
+  },
+  "timestamp_start": "2025-10-29T21:36:36.189402",
+  "timestamp_end": "2025-10-29T21:36:36.609272",
+  "total_duration_sec": 0.6092784404754639
+}

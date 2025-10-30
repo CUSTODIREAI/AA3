@@ -1,0 +1,10 @@
+{
+  "session_id": "aav3_real_d55f0c97",
+  "task": "# Simple Test Task for AAv3 Real\n\nCreate a Python script that calculates the factorial of a number.\n\nRequirements:\n- Function should handle n >= 0\n- Include error handling for negative numbers\n- Add docstring with examples\n- Include basic test cases\n",
+  "success": false,
+  "reason": "Exception: 'str' object has no attribute 'get'",
+  "duration_sec": 21.44647479057312,
+  "messages": 1,
+  "artifacts": 0,
+  "result": null
+}

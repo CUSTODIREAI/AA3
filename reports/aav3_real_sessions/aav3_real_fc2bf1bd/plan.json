@@ -1,0 +1,20 @@
+{
+  "approach": "Implement a pure-Python, iterative factorial with explicit input validation, doctested docstring, and self-contained basic tests under a main guard.",
+  "steps": [
+    "Define function signature with type hints",
+    "Validate input: int type and n >= 0",
+    "Implement iterative multiplication (handle n in {0,1})",
+    "Write docstring with doctest examples and error cases",
+    "Add basic tests (asserts and doctest.run)",
+    "Optional: add unittest.TestCase for a few cases",
+    "Provide main guard to run doctest and tests"
+  ],
+  "unknowns": [
+    "Preferred filename/module structure (e.g., factorial.py)",
+    "Should a CLI interface be included or just a function?",
+    "Desired behavior for non-integer inputs (e.g., floats, bools)",
+    "Any performance/size constraints for very large n",
+    "Preferred test style (simple asserts vs unittest vs pytest)"
+  ],
+  "rationale": "An iterative implementation avoids recursion depth limits and is straightforward to reason about. Explicit validation ensures negative inputs raise ValueError and non-integers raise TypeError, making behavior predictable. A docstring with doctest examples doubles as usage documentation and executable checks. Including a few simple asserts or a minimal unittest keeps tests lightweight and self-contained without external dependencies."
+}

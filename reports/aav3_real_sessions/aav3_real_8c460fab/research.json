@@ -1,0 +1,33 @@
+{
+  "findings": [
+    "DeepFaceLab (DFL) does not publish frequent semantic versioned releases; the canonical branch is master on iperov/DeepFaceLab. The latest Windows release zips are date-stamped; Linux users typically track master.",
+    "Python version: DFL and its deps are most reliable on Python 3.10 today (3.9 also works). Choosing 3.10 aligns with TensorFlow 2.13/2.14 prebuilt wheels and common Linux wheels (onnxruntime-gpu, facexlib, insightface).",
+    "TensorFlow GPU compatibility: TF 2.12/2.13/2.14 pip wheels are built for CUDA 11.8 and cuDNN 8.6.x. For DFL on CUDA 11.8, TF 2.13.1 is broadly reported as the most stable choice; TF 2.14.1 generally works but some third-party add-ons lag behind sooner after release.",
+    "TensorFlow Addons matrix: use tensorflow-addons 0.23.x with TF 2.13; use 0.24.x with TF 2.14; use 0.22.x with TF 2.12.",
+    "cuDNN for CUDA 11.8: TF wheels are linked to cuDNN 8.6.x, but runtime is compatible with newer 8.9.x releases (same soname). On Ubuntu 22.04 via NVIDIA repo, install apt packages libcudnn8 and libcudnn8-dev pinned to 8.9.* for CUDA 11.8 or to 8.6.* if you prefer exact match.",
+    "Ubuntu 22.04 apt package names from NVIDIA repo: libcudnn8, libcudnn8-dev (optionally version-pinned: libcudnn8=8.9.*-1+cuda11.8 libcudnn8-dev=8.9.*-1+cuda11.8). Also install cuda-compat-11-8 for compatibility driver inside containers.",
+    "RTX 4090/Ada requirements: needs NVIDIA driver >= 520.61.05 for CUDA 11.8 support; recommended 535+ or 545+ for stability. Host must have nvidia-container-toolkit installed and configured.",
+    "TensorFlow runtime flags that help on Ada: set TF_FORCE_GPU_ALLOW_GROWTH=true to avoid full VRAM preallocation; set TF_GPU_ALLOCATOR=cuda_malloc_async to reduce fragmentation; consider TF_ENABLE_ONEDNN_OPTS=0 only if you see slow CPU fallbacks (ONEDNN is CPU-side and not generally needed for GPU-heavy DFL).",
+    "DFL detectors/backends on Linux: RetinaFace/S3FD/MTCNN use ONNX models. onnxruntime works out-of-the-box on CPU; onnxruntime-gpu provides meaningful speedups on NVIDIA. facexlib (segmentation/align) and insightface (recognition/arcface) are commonly used extras. OpenCV, scikit-image, numexpr remain standard deps.",
+    "DFL CLI: Linux entry point remains python DeepFaceLab/main.py with actions like extract, train, merge. No recent breaking flag renames noted; scripts from Windows batch files translate to similar CLI flags on Linux.",
+    "Licensing/inclusion: DeepFaceLab code is GPL-3.0. The repository and releases may include or download various pretrained model files with mixed redistribution terms. For Docker images, exclude pretrained/, workspace/, and user models; allow runtime downloads or bind-mount them.",
+    "FFmpeg: System ffmpeg on Ubuntu 22.04 is sufficient for software H.264/H.265 via libx264/libx265. For GPU encoding (h264_nvenc/hevc_nvenc) you need ffmpeg built with NVENC support (--enable-nonfree --enable-nvenc) and access to NVIDIA driver inside the container.",
+    "Docker Compose GPU configuration: for widest compatibility, use deploy.resources.reservations.devices with driver: nvidia, count: all, capabilities: [gpu]. This works with modern Compose v2 and Swarm; alternatively, the shorthand gpus: all also works on recent Docker/Compose.",
+    "Recommended pinned stack for 4090 on CUDA 11.8: Python 3.10, TensorFlow 2.13.1, tensorflow-addons 0.23.x, CUDA 11.8 runtime, cuDNN 8.9.x (or 8.6.x if exact match preferred), onnxruntime-gpu 1.16+."
+  ],
+  "sources": [
+    "https://github.com/iperov/DeepFaceLab",
+    "https://github.com/iperov/DeepFaceLab/wiki",
+    "https://www.tensorflow.org/install/pip#linux",
+    "https://github.com/tensorflow/addons/releases",
+    "https://docs.nvidia.com/cuda/archive/11.8.0/",
+    "https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html",
+    "https://developer.nvidia.com/cudnn-downloads",
+    "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/",
+    "https://docs.docker.com/compose/gpu-support/",
+    "https://trac.ffmpeg.org/wiki/HWAccelIntro",
+    "https://trac.ffmpeg.org/wiki/HWAccelCuda"
+  ],
+  "recommendation": "Use Python 3.10 with TensorFlow GPU 2.13.1 and tensorflow-addons 0.23.x on CUDA 11.8. Install cuDNN 8.9.x (or 8.6.x if you want an exact match to TF build) via NVIDIA’s Ubuntu repo with libcudnn8 and libcudnn8-dev, and ensure host driver >= 520.61.05 (prefer 535/545) with nvidia-container-toolkit configured. Include onnxruntime-gpu, facexlib, and insightface in the image to accelerate DFL’s detection/segmentation/recognition on Linux. Keep pretrained models out of the image; mount or download at runtime. Use ffmpeg with NVENC enabled if you need GPU video encode; otherwise system ffmpeg suffices. For Compose, prefer deploy.resources.reservations.devices with driver: nvidia, count: all, capabilities: [gpu] for broad compatibility.",
+  "confidence": "medium"
+}

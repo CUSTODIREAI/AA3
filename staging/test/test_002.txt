@@ -1,2 +1,0 @@
-Test file 002
-Beta payload for deliberation.

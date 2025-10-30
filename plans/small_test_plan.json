@@ -1,0 +1,42 @@
+{
+  "plan_id": "small-test-001",
+  "reasoning": "Small test analyzing only INTELLIGENT_ENTERPRISE_INSTITUTE dataset",
+  "actions": [
+    {
+      "id": "A1",
+      "type": "fs.write",
+      "params": {
+        "path": "staging/small_test/scan_dataset.py",
+        "content": "#!/usr/bin/env python3\nimport os\nimport re\nimport json\nimport sys\nfrom collections import defaultdict, Counter\nfrom pathlib import Path\n\nVIDEO_EXTS = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.mpg', '.mpeg', '.m4v'}\n\nDATASET_DIR = r\"X:\\dataset2\\INTELLIGENT_ENTERPRISE_INSTITUTE\"\n\nSTAGING_DIR = Path(\"staging/small_test\")\nSTAGING_DIR.mkdir(parents=True, exist_ok=True)\n\nREPORT_JSON = STAGING_DIR / \"report.json\"\n\ndef resolve_dataset_path(p: str) -> Path:\n    p_str = p\n    as_is = Path(p_str)\n    if as_is.exists():\n        return as_is\n    if len(p_str) >= 2 and p_str[1] == ':':\n        drive = p_str[0].lower()\n        rest = p_str[2:].replace('\\\\', '/')\n        candidate = Path(f\"/mnt/{drive}/{rest.lstrip('/')}\")\n        if candidate.exists():\n            return candidate\n    return as_is\n\ndef find_sidecar_json(video_path: Path):\n    candidates = []\n    base = video_path.with_suffix('')\n    cand1 = base.with_suffix('.json')\n    if cand1.exists():\n        candidates.append(cand1)\n    folder = video_path.parent\n    for j in folder.glob('*.json'):\n        if j == cand1:\n            continue\n        if j.stem.lower() == base.name.lower():\n            candidates.append(j)\n    for j in candidates:\n        try:\n            with open(j, 'r', encoding='utf-8') as f:\n                data = json.load(f)\n            if isinstance(data, dict):\n                return data\n        except Exception:\n            continue\n    return None\n\ndef parse_duration(meta):\n    if not isinstance(meta, dict):\n        return None\n    dur = meta.get('duration') or meta.get('sec') or meta.get('length')\n    if dur is None:\n        return None\n    try:\n        return float(dur)\n    except Exception:\n        return None\n\ndef scan_dataset():\n    resolved_root = resolve_dataset_path(DATASET_DIR)\n    if not resolved_root.exists():\n        print(f\"Dataset not found: {DATASET_DIR}\")\n        return []\n    \n    records = []\n    for dirpath, dirnames, filenames in os.walk(resolved_root):\n        pdir = Path(dirpath)\n        for fn in filenames:\n            if Path(fn).suffix.lower() in VIDEO_EXTS:\n                vp = pdir / fn\n                meta = find_sidecar_json(vp)\n                dur = parse_duration(meta)\n                \n                # Get resolution from metadata\n                w = h = None\n                if isinstance(meta, dict):\n                    w = meta.get('width') or meta.get('w')\n                    h = meta.get('height') or meta.get('h')\n                    if isinstance(w, str) and w.isdigit():\n                        w = int(w)\n                    if isinstance(h, str) and h.isdigit():\n                        h = int(h)\n                \n                rec = {\n                    'path': str(vp),\n                    'has_metadata': meta is not None,\n                    'width': w,\n                    'height': h,\n                    'duration_sec': dur,\n                }\n                records.append(rec)\n    return records\n\ndef summarize(records):\n    total = len(records)\n    with_meta = sum(1 for r in records if r['has_metadata'])\n    \n    def is_suitable(r):\n        dur_ok = (r['duration_sec'] or 0) >= 10\n        h = max([x for x in [r['width'], r['height']] if isinstance(x, int)] + [0])\n        res_ok = h >= 720 if h else False\n        return dur_ok and res_ok\n    \n    suitable_count = sum(1 for r in records if is_suitable(r))\n    \n    return {\n        'total': total,\n        'with_metadata': with_meta,\n        'suitable_count': suitable_count,\n    }\n\ndef main():\n    records = scan_dataset()\n    summary = summarize(records)\n    \n    with open(REPORT_JSON, 'w', encoding='utf-8') as f:\n        json.dump(summary, f, indent=2)\n    \n    print(f\"Scanned {summary['total']} videos\")\n    print(f\"With metadata: {summary['with_metadata']}\")\n    print(f\"Suitable (>=10s, >=720p): {summary['suitable_count']}\")\n    print(f\"Wrote: {REPORT_JSON}\")\n\nif __name__ == '__main__':\n    main()\n"
+      }
+    },
+    {
+      "id": "A2",
+      "type": "exec.container_cmd",
+      "params": {
+        "image": "custodire/dev:latest",
+        "cmd": ["python", "staging/small_test/scan_dataset.py"],
+        "mounts": [
+          {"host": "staging", "container": "/workspace/staging"},
+          {"host": "X:\\dataset2", "container": "/dataset2", "mode": "ro"}
+        ]
+      }
+    },
+    {
+      "id": "A3",
+      "type": "ingest.promote",
+      "params": {
+        "items": [
+          {
+            "src": "staging/small_test/report.json",
+            "relative_dst": "small_test/report.json",
+            "tags": {
+              "test": "small",
+              "dataset": "INTELLIGENT_ENTERPRISE_INSTITUTE"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "test_plan": {
+    "test_results": {
+      "build": "fail",
+      "functionality": "fail",
+      "validation": "fail"
+    },
+    "details": "Environment restrictions prevent executing docker builds/tests here (read-only FS, no network, no container runtime). I performed static review of the provided Dockerfiles at reports/aav3_real_sessions/aav3_real_8c460fab/workspace:\n\nFiles reviewed:\n- Base: reports/aav3_real_sessions/aav3_real_8c460fab/workspace/dfl-base.Dockerfile\n- DFL:  reports/aav3_real_sessions/aav3_real_8c460fab/workspace/dfl.Dockerfile\n\nWhat I would run (build):\n- docker build -t dfl-base:rtx4090 -f reports/aav3_real_sessions/aav3_real_8c460fab/workspace/dfl-base.Dockerfile reports/aav3_real_sessions/aav3_real_8c460fab/workspace\n- docker build -t dfl:rtx4090 -f reports/aav3_real_sessions/aav3_real_8c460fab/workspace/dfl.Dockerfile --build-arg BASE_IMAGE=dfl-base:rtx4090 reports/aav3_real_sessions/aav3_real_8c460fab/workspace\n- Success: both images build without errors; base ~5–7GB, dfl ~7–10GB. Failure: any resolver/network error (e.g., git clone blocked), missing deps, or pip conflicts.\n\nWhat I would run (functionality):\n- GPU detection: docker run --rm --gpus all dfl-base:rtx4090 nvidia-smi\n- TF GPU import: docker run --rm --gpus all dfl-base:rtx4090 python -c \"import tensorflow as tf; print(tf.__version__, tf.config.list_physical_devices('GPU'))\"\n- TF Addons import: docker run --rm --gpus all dfl-base:rtx4090 python -c \"import tensorflow_addons as tfa; print(tfa.__version__)\"\n- ONNX Runtime GPU: docker run --rm --gpus all dfl-base:rtx4090 python -c \"import onnxruntime as ort; print(ort.get_device(), ort.get_available_providers())\"\n- DFL import check: docker run --rm --gpus all dfl:rtx4090 python - <<'PY'\\nimport sys, os\\nsys.path.append('/opt/DeepFaceLab')\\ntry:\\n    import mainscripts\\n    print('DFL import: OK')\\nexcept Exception as e:\\n    print('DFL import failed:', e)\\nPY\n- Success: nvidia-smi reports the 4090; tf lists >=1 GPU; tfa imports; onnxruntime reports CUDA; DFL modules import successfully. Failure: any import error, missing GPU, or CUDA provider not available.\n\nWhat I would run (validation/end-to-end):\n- Basic DFL workflow smoke tests with tiny inputs and low iterations:\n  1) Extraction: docker run --rm --gpus all -v $PWD/data:/workspace/data dfl:rtx4090 python /opt/DeepFaceLab/main.py extract --input-dir /workspace/data/src --output-dir /workspace/data/aligned --detector s3fd --max-frames 20\n  2) Training: docker run --rm --gpus all -v $PWD/data:/workspace/data dfl:rtx4090 python /opt/DeepFaceLab/main.py train --training-data-src-dir /workspace/data/aligned --training-data-dst-dir /workspace/data/aligned --model-dir /workspace/data/models --model SAEHD --iterations 200\n  3) Merge: docker run --rm --gpus all -v $PWD/data:/workspace/data dfl:rtx4090 python /opt/DeepFaceLab/main.py merge --input-dir /workspace/data/dst --output-dir /workspace/data/output --model-dir /workspace/data/models\n- Success: each stage completes without runtime dependency errors; small sample outputs produced. Failure: missing model assets (due to stripping), unmet Python deps, or TF/DFL incompatibilities.\n\nStatic observations (potential issues):\n- TensorFlow Addons pin: base installs tensorflow==2.13.1 and tensorflow-addons==0.21.0. This pair may be incompatible in practice; verify and consider adjusting TFA to a version known to import cleanly with TF 2.13.x.\n- Optional packages: insightface and facexlib often depend on PyTorch; they can significantly bloat the image and may not be used by core DFL (TF-based). If retained, ensure torch with matching CUDA is installed; otherwise consider removing from base or moving to a separate image.\n- DFL pretrained assets stripped: Removing files in /opt/DeepFaceLab/_internal (*.onnx, *.pb, *.dat, *.pth) keeps images smaller but can cause first-run failures if DFL expects bundled detectors. Mitigation: add a runtime bootstrap/download step or document how users fetch models on first use.\n- Network dependency in build: dfl.Dockerfile does a git clone during build. In air-gapped or restricted CI, this will fail; prefer a pinned commit SHA via ARG and allow injecting a tarball or submodule from build context when needed.\n- Image metadata: No LABEL instructions for CUDA/DFL/TF versions or build date; add for traceability.\n- Entrypoint: dfl image uses bash as entrypoint; consider a helper entrypoint/wrapper to run common DFL commands and set environment (e.g., tf memory growth) for smoother UX.\n\nIndicators of success:\n- Build: both images build cleanly; sizes within expected ranges; no apt/pip resolver errors.\n- Functionality: nvidia-smi works; TF sees GPU; TF Addons imports; ONNX Runtime reports CUDA; DFL imports.\n- Validation: short DFL extract/train/merge completes; no missing-model errors; non-root user inside container; no pretrained assets embedded in image; labels present.",
+    "verdict": "needs_fixes",
+    "issues_found": [
+      "Cannot execute docker builds/tests in current sandbox (no network/containers).",
+      "Build-time network dependency: dfl.Dockerfile clones from GitHub; pin commit and/or allow offline context.",
+      "Possible TF Addons incompatibility: tensorflow==2.13.1 with tensorflow-addons==0.21.0; verify or bump Addons to a compatible release.",
+      "Optional deps may bloat image: insightface/facexlib can pull PyTorch; consider removing or managing torch+CUDA explicitly.",
+      "Stripping DFL pretrained assets may break first run; add bootstrap/download step or doc.",
+      "Missing image metadata labels (CUDA/TF/DFL versions, build date, VCS ref).",
+      "DFL image lacks a convenience entrypoint for common workflows."
+    ]
+  },
+  "executed_tests": [
+    {
+      "test": "File exists: dfl-base.Dockerfile",
+      "result": "pass"
+    },
+    {
+      "test": "Docker build: dfl-base.Dockerfile",
+      "result": "fail",
+      "error": "ERROR: failed to build: resolve : lstat reports: no such file or directory\n"
+    },
+    {
+      "test": "File exists: dfl.Dockerfile",
+      "result": "pass"
+    },
+    {
+      "test": "Docker build: dfl.Dockerfile",
+      "result": "fail",
+      "error": "ERROR: failed to build: resolve : lstat reports: no such file or directory\n"
+    }
+  ],
+  "verdict": "needs_fixes",
+  "issues_found": [
+    {
+      "test": "Docker build: dfl-base.Dockerfile",
+      "result": "fail",
+      "error": "ERROR: failed to build: resolve : lstat reports: no such file or directory\n"
+    },
+    {
+      "test": "Docker build: dfl.Dockerfile",
+      "result": "fail",
+      "error": "ERROR: failed to build: resolve : lstat reports: no such file or directory\n"
+    }
+  ]
+}

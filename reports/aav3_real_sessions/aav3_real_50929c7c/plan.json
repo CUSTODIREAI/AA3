@@ -1,0 +1,22 @@
+{
+  "approach": "Implement a single, robust Python function with explicit input validation, iterative computation (to avoid recursion limits), doctested examples in the docstring, and a small unit test suite to cover edge cases and typical values.",
+  "steps": [
+    "Decide API and input rules",
+    "Implement iterative factorial function",
+    "Validate types and non-negativity",
+    "Write docstring with doctest examples",
+    "Add unit tests for key cases",
+    "Optionally add __main__ quick checks",
+    "Document how to run tests"
+  ],
+  "unknowns": [
+    "Target Python version (3.8+ assumed)",
+    "Expectations for non-int numerics (e.g., float 5.0)",
+    "Whether to accept/reject bools explicitly",
+    "Preferred test framework (unittest vs pytest)",
+    "Desired file layout and names",
+    "Any maximum input size or performance constraints",
+    "Need for CLI interface or just importable function"
+  ],
+  "rationale": "An iterative implementation is simple, avoids recursion depth limits, and is performant with Python's arbitrary-precision integers. Explicit input validation (rejecting negatives and non-ints) prevents silent errors and aligns with mathematical definition. Doctest examples ensure the docstring stays accurate and offers quick verification, while a small unit test set provides clearer coverage for edge cases like 0, 1, typical values, and error paths. Keeping the solution in a single file with optional separate tests balances simplicity and best practices."
+}

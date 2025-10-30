@@ -1,0 +1,27 @@
+{
+  "findings": [
+    "math.factorial requires a non-negative integral argument; it raises ValueError if the value is negative or not integral (e.g., 5.0).",
+    "Accepting objects with __index__ (numbers.Integral) is the Pythonic way to allow int-like types (e.g., numpy.int64) while rejecting floats.",
+    "bool is a subclass of int; without an explicit check, True/False will be treated as 1/0 (e.g., factorial(True) == 1).",
+    "Best practice is to reject booleans explicitly for API clarity, even though they are Integral.",
+    "For performance and correctness, prefer delegating to math.factorial over a custom implementation; it is optimized and handles big integers efficiently.",
+    "If implementing yourself, use an iterative loop (not recursion) to avoid RecursionError; complexity is O(n) multiplications and can be slow for large n.",
+    "Python ints are arbitrary precision; practical limits are time and memory. Document this and consider optional guards in user-facing CLIs to prevent abuse.",
+    "Do not accept float values even if they are integral (e.g., 5.0); this matches math.factorial and avoids silent truncation. If desired, coerce only via operator.index.",
+    "For a small utility/module, a CLI is optional. If exposed, use argparse and provide clear errors and help; otherwise keep module-only API.",
+    "Testing: pytest is widely adopted and offers concise tests and fixtures; unittest is in the standard library and avoids extra dependencies. Default to unittest if unspecified.",
+    "Compatibility: numbers.Integral and operator.index are standard across supported Python 3 versions; math.factorial is available in Python 3.x and returns exact integers.",
+    "Error convention: raise TypeError for non-Integral inputs; raise ValueError for negative values—consistent with Python’s own math.factorial behavior."
+  ],
+  "sources": [
+    "https://docs.python.org/3/library/math.html#math.factorial",
+    "https://docs.python.org/3/library/numbers.html#numbers.Integral",
+    "https://docs.python.org/3/library/operator.html#operator.index",
+    "https://docs.python.org/3/library/stdtypes.html#boolean-type-bool",
+    "https://docs.python.org/3/library/argparse.html",
+    "https://docs.python.org/3/library/unittest.html",
+    "https://docs.pytest.org/en/stable/"
+  ],
+  "recommendation": "Require Integral inputs via operator.index, explicitly reject bool, and raise ValueError for negatives. Do not accept floats (e.g., 5.0) unless you intentionally and explicitly convert only when n is an exact integer; default is to reject to match math.factorial. Prefer delegating to math.factorial for performance; if implementing, use an iterative (non-recursive) loop. Keep the API module-only by default; add an argparse-based CLI only if there is a user need, and consider a pragmatic upper bound or warning for extremely large n in CLI contexts. Use unittest by default to avoid external dependencies; support pytest if the project already uses it or if additional tooling is acceptable.",
+  "confidence": "medium"
+}

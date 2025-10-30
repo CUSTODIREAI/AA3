@@ -1,0 +1,27 @@
+{
+  "findings": [
+    "Module naming per PEP 8: use a short, all-lowercase filename like `factorial.py`; underscores are allowed for readability.",
+    "Provide a function-first API (`factorial(n: int) -> int`) and keep CLI optional; if needed, use `if __name__ == \"__main__\"` with `argparse` or expose a `console_scripts` entry point when packaging.",
+    "Mirror Python’s `math.factorial` semantics: raise `ValueError` for negative inputs; raise `TypeError` for non-integers.",
+    "Explicitly reject `bool`: although `bool` is a subclass of `int`, treat it as invalid (e.g., `isinstance(n, bool): raise TypeError`).",
+    "Accept int-like values implementing `__index__` (e.g., `numbers.Integral`, NumPy integers) if desired; for strictness, type-hint `int` and validate at runtime.",
+    "Performance: prefer delegating to `math.factorial` (highly optimized with efficient big-int multiplication) for large `n`; a pure-Python iterative loop is correct and avoids recursion depth limits but is slower.",
+    "Scalability: factorial grows super-exponentially; Python integers are arbitrary-precision, so practical limits are CPU time and memory; avoid recursion; do not print huge results in CLI by default.",
+    "Compatibility: `math.factorial` and arbitrary-precision `int` are available across Python 3.x (3.8–3.13+); `typing.SupportsIndex` and `numbers.Integral` can describe int-like inputs.",
+    "Testing: for small utilities, include doctest examples in the docstring and a minimal `unittest` or `pytest` test module; pytest is preferred when available, otherwise standard library `unittest` keeps zero external deps.",
+    "CLI behavior (if included): parse a single non-negative integer, exit non-zero with clear error messages on invalid input, and avoid trailing whitespace or unnecessary formatting in output."
+  ],
+  "sources": [
+    "https://docs.python.org/3/library/math.html#math.factorial",
+    "https://peps.python.org/pep-0008/#package-and-module-names",
+    "https://docs.python.org/3/library/stdtypes.html#boolean-values",
+    "https://docs.python.org/3/library/numbers.html#numbers.Integral",
+    "https://docs.python.org/3/library/typing.html#typing.SupportsIndex",
+    "https://docs.python.org/3/library/unittest.html",
+    "https://docs.pytest.org/en/stable/",
+    "https://docs.python.org/3/library/argparse.html",
+    "https://setuptools.pypa.io/en/latest/userguide/entry_point.html#console-scripts"
+  ],
+  "recommendation": "Implement a single module `factorial.py` exposing `factorial(n: int) -> int`. Validate inputs to mirror `math.factorial`: reject `bool` explicitly; raise `TypeError` for non-integers; raise `ValueError` for negatives. For performance and correctness, delegate to `math.factorial` internally; if a pure-Python implementation is required, use an iterative loop (no recursion). Keep CLI optional; if requested, provide a minimal `argparse`-based interface and sensible error handling. Add doctest examples in the function docstring and a small test module; prefer pytest when the project already uses it, otherwise use standard `unittest` to avoid extra dependencies.",
+  "confidence": "medium"
+}

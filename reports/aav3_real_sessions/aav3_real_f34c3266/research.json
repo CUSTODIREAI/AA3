@@ -1,0 +1,25 @@
+{
+  "findings": [
+    "Python support policy: use a currently supported CPython (3.11/3.12) to avoid EOL issues; 3.8 reached EOL in 2024 and 3.9 sunsets in 2025 per CPython devguide.",
+    "Typing for integers: prefer accepting indexable integers via typing.SupportsIndex and convert with operator.index(n); explicitly reject bool to avoid True/False being treated as 1/0.",
+    "Float handling: stdlib math.factorial rejects floats (even 5.0); best practice is to require int-like inputs only and raise TypeError for non-integers.",
+    "Doctest nuances: keep examples small and deterministic; run doctests via __main__ or test runner; use +ELLIPSIS only if necessary; big integers print fully and can make doctests brittle.",
+    "CLI interface: optional; if provided, use argparse with clear error messages, non-zero exit on invalid input, and simple stdout print of the result.",
+    "Project layout: for a small utility, use a single module with docstring doctests plus a separate tests/ directory for unit/pytest tests; include pyproject.toml with requires-python if packaging.",
+    "Performance: iterative Python loops are correct but slower; math.factorial is optimized in C and significantly faster and more memory-efficient; avoid recursion due to depth limits.",
+    "Bounds for n: factorial grows rapidly; document practical limits (e.g., n in the low tens of thousands will already be slow in pure Python). Do not hard-cap unless required; consider a fast path to math.factorial if allowed.",
+    "Testing approach: use math.factorial as the oracle for cross-checks in tests; add property tests (e.g., n! = n*(n-1)!) for small n; include edge cases (0, 1, large n, invalid types, negative).",
+    "Compatibility: numbers.Integral is a useful runtime check for int-like types (including numpy integers), but for typing prefer SupportsIndex; exclude bool explicitly."
+  ],
+  "sources": [
+    "https://devguide.python.org/versions/",
+    "https://peps.python.org/pep-0602/",
+    "https://docs.python.org/3/library/math.html#math.factorial",
+    "https://docs.python.org/3/library/numbers.html#numbers.Integral",
+    "https://docs.python.org/3/library/typing.html#typing.SupportsIndex",
+    "https://docs.python.org/3/library/doctest.html",
+    "https://docs.python.org/3/library/argparse.html"
+  ],
+  "recommendation": "Target Python 3.11 or 3.12. Implement factorial iteratively with strict input validation: accept only int-like values via operator.index on typing.SupportsIndex, but reject bool explicitly; raise TypeError for non-integers and ValueError for negatives. Do not accept floats (even 5.0). Provide an optional CLI using argparse under __main__. Keep a simple layout: a single module with doctests and a tests/ directory with unit/pytest tests; in tests, cross-check results with math.factorial and add property-based checks for small n. Document that performance is unbounded but that pure-Python loops become slow for large n; if performance matters, either permit using math.factorial internally or add an optional fast path behind a flag.",
+  "confidence": "medium"
+}

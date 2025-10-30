@@ -1,0 +1,60 @@
+{
+  "test_plan": {
+    "implementation": "Create a robust factorial module and matching unit tests to resolve missing file and syntax errors. The module implements an iterative factorial with strict input validation: accepts only integer-like inputs via operator.index, explicitly rejects bool, raises ValueError for negatives, and TypeError for non-integers. It includes clear docstring doctests and a __main__ block to run them. The unittest suite covers edge cases, typical and large values (cross-checked against math.factorial), SupportsIndex inputs, and error cases.",
+    "files_to_create": [
+      {
+        "path": "factorial.py",
+        "content": "from typing import Union, SupportsIndex\nimport operator\n\n__all__ = [\"factorial\"]\n\ndef factorial(n: Union[int, SupportsIndex]) -> int:\n    \"\"\"Compute n! (factorial) with strict input validation.\n\n    Accepts integer-like inputs via __index__ and rejects non-integers and bools.\n\n    Rules:\n    - bool is not allowed (reject True/False to avoid confusion with 1/0)\n    - Non-integer-like values raise TypeError\n    - Negative integers raise ValueError\n\n    Examples\n    --------\n    >>> factorial(0)\n    1\n    >>> factorial(5)\n    120\n    >>> factorial(-1)\n    Traceback (most recent call last):\n    ...\n    ValueError: n must be a non-negative integer\n    >>> factorial(5.0)\n    Traceback (most recent call last):\n    ...\n    TypeError: n must be an integer\n    >>> factorial(True)\n    Traceback (most recent call last):\n    ...\n    TypeError: bool is not allowed\n    \"\"\"\n\n    if isinstance(n, bool):\n        # Explicitly disallow bool to avoid treating True/False as 1/0.\n        raise TypeError(\"bool is not allowed\")\n\n    try:\n        k = operator.index(n)  # supports int-like types implementing __index__\n    except TypeError:\n        raise TypeError(\"n must be an integer\") from None\n\n    if k < 0:\n        raise ValueError(\"n must be a non-negative integer\")\n\n    result = 1\n    # Iterative approach avoids recursion depth issues for large n\n    for i in range(2, k + 1):\n        result *= i\n    return result\n\n\nif __name__ == \"__main__\":\n    import doctest\n    doctest.testmod()\n"
+      },
+      {
+        "path": "tests/test_factorial.py",
+        "content": "import math\nimport unittest\n\nfrom factorial import factorial\n\n\nclass IndexableInt:\n    def __init__(self, value: int) -> None:\n        self._value = int(value)\n\n    def __index__(self) -> int:\n        return self._value\n\n\nclass TestFactorial(unittest.TestCase):\n    def test_zero_and_one(self):\n        self.assertEqual(factorial(0), 1)\n        self.assertEqual(factorial(1), 1)\n\n    def test_small_values(self):\n        for n in range(2, 12):\n            with self.subTest(n=n):\n                self.assertEqual(factorial(n), math.factorial(n))\n\n    def test_large_value(self):\n        n = 200\n        self.assertEqual(factorial(n), math.factorial(n))\n        self.assertIsInstance(factorial(n), int)\n\n    def test_supports_index(self):\n        n = IndexableInt(5)\n        self.assertEqual(factorial(n), 120)\n\n    def test_negative_raises_value_error(self):\n        with self.assertRaises(ValueError):\n            factorial(-1)\n        with self.assertRaises(ValueError):\n            factorial(IndexableInt(-3))\n\n    def test_non_integer_raises_type_error(self):\n        with self.assertRaises(TypeError):\n            factorial(5.0)\n        with self.assertRaises(TypeError):\n            factorial(\"6\")  # type: ignore[arg-type]\n\n    def test_bool_rejected(self):\n        with self.assertRaises(TypeError):\n            factorial(True)\n        with self.assertRaises(TypeError):\n            factorial(False)\n\n    def test_type_of_result(self):\n        self.assertIs(type(factorial(10)), int)\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n"
+      }
+    ],
+    "key_decisions": [
+      "Use operator.index to accept int-like inputs and ensure strict integer semantics.",
+      "Explicitly reject bool to avoid surprising True/False -> 1/0 behavior.",
+      "Iterative implementation to avoid recursion limits and ensure performance.",
+      "Provide precise error messages: ValueError for negatives, TypeError for non-integers.",
+      "Include doctests for quick sanity checks and a unittest suite for comprehensive coverage."
+    ],
+    "status": "complete",
+    "_created_files": [
+      "reports/aav3_real_sessions/aav3_real_f34c3266/workspace/factorial.py",
+      "reports/aav3_real_sessions/aav3_real_f34c3266/workspace/tests/test_factorial.py"
+    ]
+  },
+  "executed_tests": [
+    {
+      "test": "File exists: factorial.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_f34c3266/workspace/factorial.py'"
+    },
+    {
+      "test": "File exists: test_factorial.py",
+      "result": "pass"
+    },
+    {
+      "test": "Python syntax: test_factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_f34c3266/workspace/tests/test_factorial.py'"
+    }
+  ],
+  "verdict": "needs_fixes",
+  "issues_found": [
+    {
+      "test": "Python syntax: factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_f34c3266/workspace/factorial.py'"
+    },
+    {
+      "test": "Python syntax: test_factorial.py",
+      "result": "fail",
+      "error": "[Errno 2] No such file or directory: 'reports/aav3_real_sessions/aav3_real_f34c3266/workspace/tests/test_factorial.py'"
+    }
+  ]
+}
