@@ -33,10 +33,11 @@ class AAv3OrchestratorReal:
     Uses simple consensus protocol that actually works.
     """
 
-    def __init__(self, task: str, session_id: str = None, max_rounds: int = 50):
+    def __init__(self, task: str, session_id: str = None, max_rounds: int = 50, consensus_threshold: float = 0.67):
         self.task = task
         self.session_id = session_id or f"aav3_real_{uuid.uuid4().hex[:8]}"
         self.max_rounds = max_rounds
+        self.consensus_threshold = consensus_threshold
         self.start_time = time.time()
 
         # Create shared memory
@@ -662,9 +663,10 @@ Should we approve this as complete?
         total = len(votes)
         approval_ratio = approve_count / total if total > 0 else 0.0
 
-        consensus_reached = approval_ratio >= 0.67  # 2/3 majority
+        consensus_reached = approval_ratio >= self.consensus_threshold
 
         print(f"\nConsensus: {approval_ratio:.0%} approval ({approve_count}/{total})")
+        print(f"Required threshold: {self.consensus_threshold:.0%}")
         print(f"Result: {'APPROVED ✓' if consensus_reached else 'NOT APPROVED ✗'}\n")
 
         return {
@@ -715,6 +717,8 @@ if __name__ == "__main__":
     ap.add_argument("--task", required=True, help="Task description or path to task file")
     ap.add_argument("--session-id", help="Session ID (auto-generated if not provided)")
     ap.add_argument("--max-rounds", type=int, default=50, help="Max refinement rounds")
+    ap.add_argument("--consensus-threshold", type=float, default=0.67,
+                    help="Agent approval threshold (0.5=lenient, 0.67=balanced, 0.90=strict)")
     args = ap.parse_args()
 
     # Load task from file if it's a path
@@ -728,6 +732,7 @@ if __name__ == "__main__":
     orchestrator = AAv3OrchestratorReal(
         task=task_text,
         session_id=args.session_id,
+        consensus_threshold=args.consensus_threshold,
         max_rounds=args.max_rounds
     )
 
