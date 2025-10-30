@@ -946,6 +946,17 @@ reports/aav3_real_sessions/             # Session outputs directory
 
 ## Changelog
 
+### v1.2.0 (2025-10-30) - **Added Today**
+
+- ✅ **Configurable Consensus Threshold**: Added `--consensus-threshold` CLI parameter
+  - Enables cost/quality trade-offs via lenient (0.50), balanced (0.67 default), strict (0.90+) modes
+  - Lenient mode: ~50% faster, ~40% cheaper for rapid prototyping
+  - Strict mode: Higher quality for production deployments with more deliberation rounds
+  - Display required threshold during consensus voting
+  - **Implementation**: `scripts/aav3_orchestrator_real.py` line 36 (`__init__`), line 666 (`_consensus_phase`), line 720 (CLI arg)
+  - **Documentation**: `CONSENSUS_MODES.md` with comprehensive usage examples and cost analysis
+  - **Impact**: Addresses efficiency concerns - allows users to balance LLM call costs vs. output quality
+
 ### v1.1.0 (2025-10-30)
 
 - ✅ **Environment Capability Detection**: Preflight environment scanning before Phase 1 Planning
