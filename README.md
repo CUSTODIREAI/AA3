@@ -300,6 +300,8 @@ If you use AAv3 REAL in your research or project, please cite:
 ## Documentation
 
 - **System Documentation**: [docs/AAv3_REAL_System_Documentation.md](docs/AAv3_REAL_System_Documentation.md)
+- **LLM Configuration Reference**: [docs/LLM_CONFIGURATION.md](docs/LLM_CONFIGURATION.md) - Hardcoded values, cost control, model selection
+- **Consensus Modes Guide**: [CONSENSUS_MODES.md](CONSENSUS_MODES.md) - Cost/quality trade-offs
 - **Architecture Details**: See "Core Concepts" in system documentation
 - **Agent Protocols**: See "Agent Roles and Responsibilities" section
 - **API Reference**: See docstrings in `src/agents/` modules
