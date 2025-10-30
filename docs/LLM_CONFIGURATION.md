@@ -2,13 +2,27 @@
 
 **AAv3 REAL System - Complete LLM Hardcoding Audit**
 **Date**: 2025-10-30
-**Version**: v1.2.0+
+**Version**: v1.3.0+
+
+---
+
+## ⚠️ DEPRECATION NOTICE
+
+**Effective as of v1.3.0, Custodire AI exclusively uses GPT-5 models.**
+
+- **DEPRECATED**: GPT-4, GPT-3.5-turbo
+- **SUPPORTED**: GPT-5 (minimal, low, medium, high reasoning levels)
+- **Default**: `gpt-5 medium`
+
+Historical references to GPT-4/GPT-3.5-turbo in this document are preserved for audit purposes only. **Do not use deprecated models** - they are no longer maintained or recommended.
 
 ---
 
 ## Executive Summary
 
 This document provides a comprehensive inventory of all LLM-related hardcoded values and configurable parameters in the AAv3 REAL system. Use this as a reference to understand cost drivers, model dependencies, and customization options.
+
+**Current Status (v1.3.0+):** All hardcoded model values have been resolved. System now defaults to `gpt-5 medium` with full user configurability via `OPENAI_MODEL` environment variable.
 
 ## Table of Contents
 

@@ -78,18 +78,17 @@ def call_claude_api(prompt: str, system_prompt: str = "", max_tokens: int = 4096
 
 def call_openai_api(prompt: str, system_prompt: str = "", max_tokens: int = 4096) -> LLMResponse:
     """
-    Call OpenAI API (GPT-5/GPT-4/etc.) for reasoning.
+    Call OpenAI API (GPT-5) for reasoning.
 
     Model selection (priority order):
     1. OPENAI_MODEL environment variable
     2. Default: "gpt-5 medium"
 
-    Supported models:
+    Supported GPT-5 reasoning levels:
     - gpt-5 minimal  (fastest, limited reasoning)
     - gpt-5 low      (balanced speed/reasoning)
-    - gpt-5 medium   (default, good balance)
-    - gpt-5 high     (max reasoning depth)
-    - gpt-4, gpt-3.5-turbo (legacy)
+    - gpt-5 medium   (default, recommended)
+    - gpt-5 high     (maximum reasoning depth)
     """
     try:
         import openai
